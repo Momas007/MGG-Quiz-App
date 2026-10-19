@@ -27,11 +27,44 @@ export default function App() {
   const [playerName, setPlayerName] = useState('');
   const [inputCode, setInputCode] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Live Room State aus Firebase Realtime Database
   const [roomData, setRoomData] = useState(null);
 
-  // Synchronisierung mit Firebase, sobald ein Raum betreten wird
+  // Audio Feedback Synthesizer
+  const playSound = (type) => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === 'buzzer') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+      } else if (type === 'correct') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+        osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+      }
+    } catch (e) {
+      console.log('Audio Context Error', e);
+    }
+  };
+
+  // Synchronisierung mit Firebase
   useEffect(() => {
     if (!roomCode) return;
     const roomRef = ref(db, `rooms/${roomCode}`);
@@ -57,41 +90,41 @@ export default function App() {
     if (!playerName.trim()) return;
     const newCode = generateCode();
     
-    // In Firebase anlegen
-    await set(ref(db, `rooms/${newCode}`), {
-      host: playerName,
-      createdAt: Date.now(),
-      currentQuestionIndex: -1,
-      questions: [],
-      players: {},
-      buzzedPlayer: null,
-      revealedAnswer: false
-    });
+    try {
+      await set(ref(db, `rooms/${newCode}`), {
+        host: playerName,
+        createdAt: Date.now(),
+        currentQuestionIndex: -1,
+        questions: [],
+        players: {},
+        buzzedPlayer: null,
+        revealedAnswer: false
+      });
 
-    setRoomCode(newCode);
-    setRole('host');
-    setErrorMessage('');
+      setRoomCode(newCode);
+      setRole('host');
+      setErrorMessage('');
+    } catch (err) {
+      setErrorMessage('Fehler beim Erstellen des Raums. Bitte prüfe die Firebase-Regeln.');
+    }
   };
 
-  // Raum Beitreten (Mit Validierung ob der Raum existiert)
+  // Raum Beitreten
   const handleJoinRoom = async (e) => {
     e.preventDefault();
     setErrorMessage('');
     const cleanCode = inputCode.toUpperCase().trim();
     if (!playerName.trim() || cleanCode.length !== 5) return;
 
-    // Prüfen ob Raum in Firebase existiert
     const snapshot = await get(child(ref(db), `rooms/${cleanCode}`));
     if (!snapshot.exists()) {
       setErrorMessage('Raum existiert nicht! Bitte erstelle zuerst einen Raum oder prüfe den Code.');
       return;
     }
 
-    // Spieler zum Raum in Firebase hinzufügen
     await update(ref(db, `rooms/${cleanCode}/players/${playerName}`), {
       name: playerName,
-      score: 0,
-      answer: null
+      score: 0
     });
 
     setRoomCode(cleanCode);
@@ -135,17 +168,36 @@ export default function App() {
       points: Number(newPoints) || 100
     };
 
+    const updatedQuestions = [...currentQuestions, newQ];
     await update(ref(db, `rooms/${roomCode}`), {
-      questions: [...currentQuestions, newQ],
-      currentQuestionIndex: currentQuestions.length === 0 ? 0 : roomData?.currentQuestionIndex
+      questions: updatedQuestions,
+      currentQuestionIndex: roomData?.currentQuestionIndex === -1 ? 0 : roomData?.currentQuestionIndex
     });
 
     setNewQuestionText('');
     setNewOptions(['', '', '', '']);
   };
 
+  const setQuestionIndex = async (idx) => {
+    await update(ref(db, `rooms/${roomCode}`), {
+      currentQuestionIndex: idx,
+      buzzedPlayer: null,
+      revealedAnswer: false
+    });
+  };
+
+  const deleteQuestion = async (qId) => {
+    const currentQuestions = roomData?.questions || [];
+    const filtered = currentQuestions.filter(q => q.id !== qId);
+    await update(ref(db, `rooms/${roomCode}`), {
+      questions: filtered,
+      currentQuestionIndex: filtered.length === 0 ? -1 : 0
+    });
+  };
+
   const handleBuzzer = async () => {
     if (!roomData || roomData.buzzedPlayer) return;
+    playSound('buzzer');
     await update(ref(db, `rooms/${roomCode}`), {
       buzzedPlayer: playerName
     });
@@ -153,6 +205,7 @@ export default function App() {
 
   const handleAwardPoints = async (pName, pts) => {
     if (!roomData?.players?.[pName]) return;
+    playSound('correct');
     const currentScore = roomData.players[pName].score || 0;
     await update(ref(db, `rooms/${roomCode}/players/${pName}`), {
       score: currentScore + pts
@@ -274,9 +327,19 @@ export default function App() {
         <div className="flex justify-between items-center pb-6 border-b border-slate-800 mb-6">
           <div>
             <span className="text-xs text-indigo-400 font-semibold uppercase">Moderator Control</span>
-            <h1 className="text-2xl font-bold">Raumcode: <span className="font-mono bg-indigo-600/30 text-indigo-300 px-3 py-1 rounded-lg">{roomCode}</span></h1>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              Raumcode: <span className="font-mono bg-indigo-600/30 text-indigo-300 px-3 py-1 rounded-lg border border-indigo-500/30">{roomCode}</span>
+            </h1>
           </div>
-          <button onClick={() => setRole(null)} className="px-4 py-2 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-xl text-sm font-semibold">Verlassen</button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="p-2.5 bg-slate-800 rounded-xl border border-slate-700 hover:bg-slate-700"
+            >
+              {soundEnabled ? <Volume2 className="w-5 h-5 text-emerald-400" /> : <VolumeX className="w-5 h-5 text-slate-500" />}
+            </button>
+            <button onClick={() => setRole(null)} className="px-4 py-2 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-xl text-sm font-semibold">Verlassen</button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -287,10 +350,23 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-700">
                     <p className="text-xl font-semibold text-white">{currentQ.text}</p>
+                    {currentQ.type === 'mc' && (
+                      <div className="grid grid-cols-2 gap-2 mt-3">
+                        {currentQ.options.map((opt, idx) => (
+                          <div key={idx} className={`p-2 rounded border text-xs ${idx === currentQ.correctOption ? 'border-emerald-500 text-emerald-300' : 'border-slate-700 text-slate-400'}`}>
+                            <strong>{['A','B','C','D'][idx]}:</strong> {opt}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex gap-3">
-                    <button onClick={toggleReveal} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium">{roomData?.revealedAnswer ? 'Antwort verbergen' : 'Antwort auflösen'}</button>
-                    <button onClick={resetBuzzer} className="px-4 py-2 bg-amber-600 text-white rounded-xl text-sm font-medium">Buzzer zurücksetzen</button>
+                  <div className="flex flex-wrap gap-3">
+                    <button onClick={toggleReveal} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition">
+                      {roomData?.revealedAnswer ? 'Antwort verbergen' : 'Antwort auflösen'}
+                    </button>
+                    <button onClick={resetBuzzer} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-medium transition">
+                      Buzzer zurücksetzen
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -298,8 +374,9 @@ export default function App() {
               )}
             </div>
 
+            {/* Frage Anlegen */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-              <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><Plus className="w-5 h-5"/> Frage anlegen</h2>
+              <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><Plus className="w-5 h-5"/> Neue Frage erstellen</h2>
               <form onSubmit={addQuestion} className="space-y-4">
                 <input
                   type="text"
@@ -308,11 +385,75 @@ export default function App() {
                   onChange={(e) => setNewQuestionText(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
                 />
-                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl font-semibold">Frage speichern & live schalten</button>
+                <div className="grid grid-cols-2 gap-4">
+                  <select
+                    value={newQuestionType}
+                    onChange={(e) => setNewQuestionType(e.target.value)}
+                    className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white"
+                  >
+                    <option value="mc">Multiple Choice (A, B, C, D)</option>
+                    <option value="text">Freitext / Buzzer</option>
+                  </select>
+                  <input
+                    type="number"
+                    value={newPoints}
+                    onChange={(e) => setNewPoints(e.target.value)}
+                    className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white"
+                    placeholder="Punkte"
+                  />
+                </div>
+
+                {newQuestionType === 'mc' && (
+                  <div className="space-y-2">
+                    {newOptions.map((opt, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <span className="w-4 font-bold text-slate-500">{['A','B','C','D'][idx]}</span>
+                        <input
+                          type="text"
+                          placeholder={`Option ${['A','B','C','D'][idx]}`}
+                          value={opt}
+                          onChange={(e) => {
+                            const updated = [...newOptions];
+                            updated[idx] = e.target.value;
+                            setNewOptions(updated);
+                          }}
+                          className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white"
+                        />
+                        <input
+                          type="radio"
+                          name="correct"
+                          checked={newCorrectOption === idx}
+                          onChange={() => setNewCorrectOption(idx)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl font-semibold transition">
+                  Frage speichern
+                </button>
               </form>
+            </div>
+
+            {/* Fragenliste */}
+            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+              <h3 className="text-sm font-bold text-slate-400 mb-3">Erstellte Fragen ({currentQuestions.length})</h3>
+              <div className="space-y-2">
+                {currentQuestions.map((q, idx) => (
+                  <div key={q.id} className={`p-3 rounded-xl border flex items-center justify-between ${idx === currentQIndex ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
+                    <p className="text-sm text-white truncate">{idx + 1}. {q.text}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setQuestionIndex(idx)} className="px-3 py-1 bg-indigo-600 text-white text-xs rounded-lg font-semibold">Aktivieren</button>
+                      <button onClick={() => deleteQuestion(q.id)} className="p-1 text-slate-500 hover:text-rose-400"><Trash2 className="w-4 h-4"/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
+          {/* Spieler Liste */}
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
             <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><UserCheck className="w-5 h-5"/> Spieler Live ({playerList.length})</h2>
             {roomData?.buzzedPlayer && (
@@ -328,7 +469,10 @@ export default function App() {
                     <p className="font-semibold text-white text-sm">{p.name}</p>
                     <p className="text-xs text-indigo-400">{p.score} Punkte</p>
                   </div>
-                  <button onClick={() => handleAwardPoints(p.name, 100)} className="px-3 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+100 Pkt.</button>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleAwardPoints(p.name, currentQ ? currentQ.points : 100)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{currentQ ? currentQ.points : 100}</button>
+                    <button onClick={() => handleAwardPoints(p.name, -50)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-50</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -343,28 +487,44 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-900 text-white p-4 flex flex-col justify-between">
         <div className="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
-          <p className="font-bold">{playerName}</p>
-          <p className="font-mono font-bold text-indigo-400">{roomCode}</p>
+          <div>
+            <span className="text-xs text-slate-400">Mitspieler</span>
+            <p className="font-bold">{playerName}</p>
+          </div>
+          <div className="text-right">
+            <span className="text-xs text-slate-400">Raumcode</span>
+            <p className="font-mono font-bold text-indigo-400">{roomCode}</p>
+          </div>
         </div>
 
         <div className="my-auto space-y-6 text-center">
           {currentQ ? (
             <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-              <p className="text-xl font-bold">{currentQ.text}</p>
+              <span className="text-xs text-indigo-400 font-semibold uppercase">Aktuelle Frage</span>
+              <p className="text-xl font-bold mt-2">{currentQ.text}</p>
+              {currentQ.type === 'mc' && (
+                <div className="grid grid-cols-1 gap-2 mt-4">
+                  {currentQ.options.map((opt, idx) => (
+                    <div key={idx} className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-left text-sm">
+                      <strong className="text-indigo-400 mr-2">{['A','B','C','D'][idx]}:</strong> {opt}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
-            <p className="text-slate-500">Warte auf den Moderator...</p>
+            <p className="text-slate-500">Warte auf die nächste Frage vom Moderator...</p>
           )}
 
           <button
             onClick={handleBuzzer}
             disabled={!!roomData?.buzzedPlayer}
-            className={`w-full py-12 rounded-3xl font-extrabold text-2xl uppercase transition ${
+            className={`w-full py-12 rounded-3xl font-extrabold text-2xl uppercase transition transform active:scale-95 ${
               roomData?.buzzedPlayer === playerName
                 ? 'bg-amber-500 text-slate-950 animate-pulse'
                 : roomData?.buzzedPlayer
                 ? 'bg-slate-800 text-slate-600 border border-slate-700'
-                : 'bg-rose-600 active:scale-95 text-white shadow-xl'
+                : 'bg-rose-600 hover:bg-rose-500 text-white border-b-8 border-rose-800 shadow-2xl'
             }`}
           >
             {roomData?.buzzedPlayer === playerName ? 'GEBUZZERT!' : roomData?.buzzedPlayer ? 'GESPERRT' : 'BUZZER'}
@@ -378,12 +538,42 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8 flex flex-col justify-between">
       <div className="flex justify-between items-center bg-slate-900 p-6 rounded-2xl border border-slate-800">
-        <h1 className="text-2xl font-black">QUIZ SHOW</h1>
-        <span className="font-mono text-2xl font-bold text-indigo-400">{roomCode}</span>
+        <h1 className="text-2xl font-black tracking-wider uppercase">QUIZ SHOW</h1>
+        <div className="text-right">
+          <span className="text-xs text-slate-500 uppercase block">Raumcode</span>
+          <span className="font-mono text-2xl font-bold text-indigo-400">{roomCode}</span>
+        </div>
       </div>
 
-      <div className="my-auto max-w-3xl mx-auto text-center space-y-8">
-        {currentQ ? <h2 className="text-4xl font-extrabold">{currentQ.text}</h2> : <p className="text-slate-600">Warte auf Frage...</p>}
+      <div className="my-auto max-w-4xl mx-auto text-center space-y-8">
+        {currentQ ? (
+          <div className="space-y-6">
+            <span className="inline-block px-4 py-1 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-full text-sm font-semibold">
+              {currentQ.points} Punkte
+            </span>
+            <h2 className="text-4xl font-extrabold">{currentQ.text}</h2>
+
+            {currentQ.type === 'mc' && (
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                {currentQ.options.map((opt, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-6 rounded-2xl border text-left text-lg font-semibold transition ${
+                      roomData?.revealedAnswer && idx === currentQ.correctOption
+                        ? 'bg-emerald-600/30 border-emerald-500 text-emerald-200'
+                        : 'bg-slate-900/80 border-slate-800 text-slate-300'
+                    }`}
+                  >
+                    <span className="text-indigo-400 mr-3 font-bold">{['A','B','C','D'][idx]}:</span> {opt}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-slate-600 text-xl font-bold">Warte auf den Start der nächsten Runde...</p>
+        )}
+
         {roomData?.buzzedPlayer && (
           <div className="p-6 bg-amber-500/20 border-2 border-amber-500 rounded-2xl text-amber-300 text-2xl font-black animate-bounce inline-block">
             🔔 {roomData.buzzedPlayer} HAT GEBUZZERT!
@@ -394,7 +584,7 @@ export default function App() {
       <div className="grid grid-cols-4 gap-4">
         {playerList.map(p => (
           <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
-            <p className="text-xs text-slate-400">{p.name}</p>
+            <p className="text-xs text-slate-400 truncate">{p.name}</p>
             <p className="text-xl font-black text-indigo-400">{p.score} Pkt.</p>
           </div>
         ))}
