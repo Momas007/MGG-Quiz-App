@@ -93,7 +93,7 @@ export default function App() {
         return;
       }
 
-      // Nur animieren, wenn tatsächlich neue Punkte dazukommen oder weggehen
+      // Nur animieren, wenn sich Punkte tatsächlich verändern (Differenz ermitteln)
       if (data?.players && roomData?.players) {
         Object.keys(data.players).forEach(pName => {
           const oldScore = roomData.players[pName]?.score || 0;
@@ -1006,7 +1006,7 @@ export default function App() {
         )}
       </div>
 
-      {/* Leaderboard mit schwebenden Live-Punkten (+ / -) */}
+      {/* Leaderboard mit exakt schwebendem Differenz-Wert (+ / -) */}
       <div className="grid grid-cols-4 gap-4">
         {playerList.map(p => {
           const delta = scoreDeltas[p.name];
