@@ -989,7 +989,7 @@ export default function App() {
         )}
       </div>
 
-      {/* Leaderboard ohne Plus-/Minus-Animationen */}
+      {/* Leaderboard ohne jegliche Plus-/Minus-Animationen */}
       <div className="grid grid-cols-4 gap-4">
         {playerList.map(p => (
           <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center relative overflow-hidden">
