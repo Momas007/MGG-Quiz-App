@@ -35,6 +35,7 @@ export default function App() {
 
   // Live Room State aus Firebase Realtime Database
   const [roomData, setRoomData] = useState(null);
+  const [scoreDeltas, setScoreDeltas] = useState({});
 
   // Reset beim Zurückkehren zur Startseite
   useEffect(() => {
@@ -90,6 +91,20 @@ export default function App() {
         setInputCode('');
         setErrorMessage('Der Moderator hat den Raum geschlossen.');
         return;
+      }
+
+      if (data?.players && roomData?.players) {
+        Object.keys(data.players).forEach(pName => {
+          const oldScore = roomData.players[pName]?.score || 0;
+          const newScore = data.players[pName]?.score || 0;
+          if (oldScore !== newScore) {
+            const diff = newScore - oldScore;
+            setScoreDeltas(prev => ({ ...prev, [pName]: diff }));
+            setTimeout(() => {
+              setScoreDeltas(prev => ({ ...prev, [pName]: null }));
+            }, 2500);
+          }
+        });
       }
 
       setRoomData(data);
@@ -233,6 +248,7 @@ export default function App() {
     setNewCorrectText('');
   };
 
+  // Moderator gibt die ausgewählte Frage jetzt exakt für alle frei
   const releaseQuestionToLive = async (idx) => {
     const resetPlayers = { ...roomData?.players };
     Object.keys(resetPlayers).forEach(pKey => {
@@ -476,6 +492,7 @@ export default function App() {
   const liveQIndex = roomData?.currentQuestionIndex ?? -1;
   const liveQ = liveQIndex >= 0 ? currentQuestions[liveQIndex] : null;
 
+  // Die Frage, die der Moderator aktuell im Vorschau-Modus betrachert
   const previewQ = currentQuestions[hostPreviewIndex] || null;
   const isPreviewLive = hostPreviewIndex === liveQIndex;
 
@@ -521,6 +538,7 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             
+            {/* MODERATOR CONTROL BOARD */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2">
@@ -536,6 +554,7 @@ export default function App() {
                   )}
                 </div>
 
+                {/* VORHERIGE / NÄCHSTE FRAGE DURCHBLÄTTERN */}
                 {currentQuestions.length > 0 && (
                   <div className="flex items-center gap-2">
                     <button
@@ -582,6 +601,7 @@ export default function App() {
                     )}
                   </div>
 
+                  {/* BUTTON ZUM FREIGEBEN DER FRAGE */}
                   {!isPreviewLive ? (
                     <button
                       onClick={() => releaseQuestionToLive(hostPreviewIndex)}
@@ -630,6 +650,7 @@ export default function App() {
               )}
             </div>
 
+            {/* Frage Anlegen */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
               <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><Plus className="w-5 h-5"/> Neue Frage erstellen</h2>
               <form onSubmit={addQuestion} className="space-y-4">
@@ -705,6 +726,7 @@ export default function App() {
               </form>
             </div>
 
+            {/* Fragenliste */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
               <h3 className="text-sm font-bold text-slate-400 mb-3">Erstellte Fragen ({currentQuestions.length})</h3>
               <div className="space-y-2">
@@ -989,14 +1011,21 @@ export default function App() {
         )}
       </div>
 
-      {/* Leaderboard ohne jegliche Plus-/Minus-Animationen */}
       <div className="grid grid-cols-4 gap-4">
-        {playerList.map(p => (
-          <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center relative overflow-hidden">
-            <p className="text-xs text-slate-400 truncate">{p.name}</p>
-            <p className="text-xl font-black text-indigo-400">{p.score} Pkt.</p>
-          </div>
-        ))}
+        {playerList.map(p => {
+          const delta = scoreDeltas[p.name];
+          return (
+            <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center relative overflow-hidden">
+              {delta !== undefined && delta !== null && (
+                <span className={`absolute -top-1 left-1/2 transform -translate-x-1/2 text-base font-black animate-bounce ${delta > 0 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]'}`}>
+                  {delta > 0 ? `+${delta}` : delta}
+                </span>
+              )}
+              <p className="text-xs text-slate-400 truncate">{p.name}</p>
+              <p className="text-xl font-black text-indigo-400">{p.score} Pkt.</p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
