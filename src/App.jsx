@@ -45,6 +45,16 @@ export default function App() {
     }
   }, [role]);
 
+  // Synchronisierung des lokalen Antwort-Inputs bei Live-Datenänderungen
+  useEffect(() => {
+    if (role === 'player' && roomData?.players?.[playerName]) {
+      const currentAns = roomData.players[playerName].answer;
+      if (currentAns !== null && currentAns !== undefined) {
+        setPlayerTextAnswer(currentAns);
+      }
+    }
+  }, [roomData, role, playerName]);
+
   // Audio Feedback
   const playSound = (type) => {
     if (!soundEnabled) return;
@@ -151,7 +161,7 @@ export default function App() {
 
     const data = snapshot.val();
 
-    // 1. MODERATOR HOT-JOIN: Prüfe, ob die Person der Moderator des Raums war
+    // 1. MODERATOR HOT-JOIN
     if (data.host && data.host.toLowerCase() === cleanName.toLowerCase()) {
       setRoomCode(cleanCode);
       setRole('host');
@@ -159,7 +169,7 @@ export default function App() {
       return;
     }
 
-    // 2. SPIELER HOT-JOIN: Prüfe, ob der Spieler bereits im Raum war
+    // 2. SPIELER HOT-JOIN
     const existingPlayers = data.players || {};
     const existingPlayerKey = Object.keys(existingPlayers).find(
       key => key.toLowerCase() === cleanName.toLowerCase()
@@ -173,9 +183,14 @@ export default function App() {
         answer: null,
         selected: false
       });
+    } else {
+      // Existierender Spieler -> Vorhandene Antwort abrufen, falls vorhanden
+      const existingAns = existingPlayers[existingPlayerKey]?.answer;
+      if (existingAns !== null && existingAns !== undefined) {
+        setPlayerTextAnswer(existingAns);
+      }
     }
 
-    // Für Spieler Rolle setzen
     setRoomCode(cleanCode);
     setRole('player');
   };
@@ -196,7 +211,6 @@ export default function App() {
     setRole('tv');
   };
 
-  // Raum schließen (Moderator löscht den Raum komplett)
   const handleLeaveHost = async () => {
     if (roomCode && role === 'host') {
       try {
@@ -210,7 +224,6 @@ export default function App() {
     setInputCode('');
   };
 
-  // Mitspieler geht auf Startseite zurück (ohne den Datenstand im Raum zu löschen für Hot-Join)
   const handleLeavePlayer = () => {
     setRole(null);
     setRoomCode('');
@@ -311,6 +324,11 @@ export default function App() {
 
   const handleSubmitAnswer = async (answerVal) => {
     if (!roomCode || !playerName) return;
+    
+    // Verhindern, dass eine bereits eingereichte Antwort ohne Moderator-Erlaubnis überschrieben wird
+    const currentAns = roomData?.players?.[playerName]?.answer;
+    if (currentAns !== null && currentAns !== undefined) return;
+
     await update(ref(db, `rooms/${roomCode}/players/${playerName}`), {
       answer: answerVal
     });
@@ -838,9 +856,12 @@ export default function App() {
                     <button
                       key={idx}
                       onClick={() => handleSubmitAnswer(idx)}
+                      disabled={hasAnswered}
                       className={`w-full p-3 rounded-xl border text-left text-sm font-medium transition ${
                         playerObj?.answer === idx 
                           ? 'bg-emerald-600/30 border-emerald-500 text-emerald-200'
+                          : hasAnswered
+                          ? 'bg-slate-900/50 border-slate-800 text-slate-600 cursor-not-allowed'
                           : 'bg-slate-900 hover:bg-indigo-600/30 border-slate-700 text-white'
                       }`}
                     >
