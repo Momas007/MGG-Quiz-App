@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, get, child, remove } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw
+  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 // Firebase Konfiguration
@@ -33,6 +33,15 @@ export default function App() {
   // Live Room State aus Firebase Realtime Database
   const [roomData, setRoomData] = useState(null);
   const [scoreDeltas, setScoreDeltas] = useState({});
+
+  // Reset beim Zurückkehren zur Startseite
+  useEffect(() => {
+    if (!role) {
+      setRoomCode('');
+      setInputCode('');
+      setPlayerTextAnswer('');
+    }
+  }, [role]);
 
   // Audio Feedback
   const playSound = (type) => {
@@ -77,6 +86,7 @@ export default function App() {
       if (!data && role) {
         setRole(null);
         setRoomCode('');
+        setInputCode('');
         setErrorMessage('Der Moderator hat den Raum geschlossen.');
         return;
       }
@@ -189,6 +199,7 @@ export default function App() {
     }
     setRole(null);
     setRoomCode('');
+    setInputCode('');
   };
 
   // Mitspieler verlässt den Raum
@@ -202,6 +213,7 @@ export default function App() {
     }
     setRole(null);
     setRoomCode('');
+    setInputCode('');
     setPlayerTextAnswer('');
   };
 
@@ -276,6 +288,9 @@ export default function App() {
   const handleEvaluateBuzzer = async (isCorrect) => {
     if (!roomData?.buzzedPlayer) return;
     const bPlayer = roomData.buzzedPlayer;
+    const currentQuestions = roomData?.questions || [];
+    const qIndex = roomData?.currentQuestionIndex ?? -1;
+    const currentQ = qIndex >= 0 ? currentQuestions[qIndex] : null;
     const pts = currentQ ? currentQ.points : 100;
     const currentScore = roomData?.players?.[bPlayer]?.score || 0;
     const newScore = isCorrect ? currentScore + pts : currentScore - Math.round(pts / 2);
@@ -341,6 +356,10 @@ export default function App() {
   };
 
   const toggleReveal = async () => {
+    const currentQuestions = roomData?.questions || [];
+    const qIndex = roomData?.currentQuestionIndex ?? -1;
+    const currentQ = qIndex >= 0 ? currentQuestions[qIndex] : null;
+
     const nextRevealed = !roomData?.revealedAnswer;
     const updates = {
       [`rooms/${roomCode}/revealedAnswer`]: nextRevealed
@@ -515,7 +534,33 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-              <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><Play className="w-5 h-5"/> Live Steuerung</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-indigo-400 flex items-center gap-2"><Play className="w-5 h-5"/> Live Steuerung</h2>
+                
+                {/* VORHERIGE / NÄCHSTE FRAGE PFEILE */}
+                {currentQuestions.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setQuestionIndex(Math.max(0, currentQIndex - 1))}
+                      disabled={currentQIndex <= 0}
+                      className="p-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 flex items-center gap-1 text-xs font-semibold"
+                    >
+                      <ChevronLeft className="w-4 h-4"/> Vorherige
+                    </button>
+                    <span className="text-xs text-slate-400 font-mono">
+                      {currentQIndex >= 0 ? currentQIndex + 1 : 0} / {currentQuestions.length}
+                    </span>
+                    <button
+                      onClick={() => setQuestionIndex(Math.min(currentQuestions.length - 1, currentQIndex + 1))}
+                      disabled={currentQIndex >= currentQuestions.length - 1}
+                      className="p-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 flex items-center gap-1 text-xs font-semibold"
+                    >
+                      Nächste <ChevronRight className="w-4 h-4"/>
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {currentQ ? (
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-700">
@@ -925,7 +970,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Leaderboard mit schwebenden Live-Punkten (+ / -) */}
       <div className="grid grid-cols-4 gap-4">
         {playerList.map(p => {
           const delta = scoreDeltas[p.name];
