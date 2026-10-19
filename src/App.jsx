@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, onValue, set, update, get, child } from 'firebase/database';
+import { getDatabase, ref, onValue, set, update, get, child, remove } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X
+  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut
 } from 'lucide-react';
 
 // Firebase Konfiguration
@@ -149,6 +149,20 @@ export default function App() {
 
     setRoomCode(cleanCode);
     setRole('tv');
+  };
+
+  // Spieler verlässt den Raum
+  const handleLeavePlayer = async () => {
+    if (roomCode && playerName && role === 'player') {
+      try {
+        await remove(ref(db, `rooms/${roomCode}/players/${playerName}`));
+      } catch (e) {
+        console.log('Fehler beim Entfernen des Spielers:', e);
+      }
+    }
+    setRole(null);
+    setRoomCode('');
+    setPlayerTextAnswer('');
   };
 
   // --- MODERATOR ACTIONS ---
@@ -426,7 +440,9 @@ export default function App() {
             >
               {soundEnabled ? <Volume2 className="w-5 h-5 text-emerald-400" /> : <VolumeX className="w-5 h-5 text-slate-500" />}
             </button>
-            <button onClick={() => setRole(null)} className="px-4 py-2 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-xl text-sm font-semibold">Verlassen</button>
+            <button onClick={() => setRole(null)} className="px-4 py-2 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-rose-600/30">
+              <LogOut className="w-4 h-4"/> Beenden
+            </button>
           </div>
         </div>
 
@@ -646,9 +662,17 @@ export default function App() {
             <span className="text-xs text-slate-400">Mitspieler</span>
             <p className="font-bold">{playerName}</p>
           </div>
-          <div className="text-right">
-            <span className="text-xs text-slate-400">Raumcode</span>
-            <p className="font-mono font-bold text-indigo-400">{roomCode}</p>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <span className="text-xs text-slate-400">Raumcode</span>
+              <p className="font-mono font-bold text-indigo-400">{roomCode}</p>
+            </div>
+            <button 
+              onClick={handleLeavePlayer}
+              className="px-3 py-2 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold flex items-center gap-1 hover:bg-rose-600/30"
+            >
+              <LogOut className="w-4 h-4" /> Verlassen
+            </button>
           </div>
         </div>
 
@@ -727,9 +751,17 @@ export default function App() {
     <div className="min-h-screen bg-slate-950 text-white p-8 flex flex-col justify-between">
       <div className="flex justify-between items-center bg-slate-900 p-6 rounded-2xl border border-slate-800">
         <h1 className="text-2xl font-black tracking-wider uppercase">QUIZ SHOW</h1>
-        <div className="text-right">
-          <span className="text-xs text-slate-500 uppercase block">Raumcode</span>
-          <span className="font-mono text-2xl font-bold text-indigo-400">{roomCode}</span>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <span className="text-xs text-slate-500 uppercase block">Raumcode</span>
+            <span className="font-mono text-2xl font-bold text-indigo-400">{roomCode}</span>
+          </div>
+          <button 
+            onClick={() => setRole(null)}
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg border border-slate-700 text-xs flex items-center gap-1"
+          >
+            <LogOut className="w-4 h-4" /> Beenden
+          </button>
         </div>
       </div>
 
