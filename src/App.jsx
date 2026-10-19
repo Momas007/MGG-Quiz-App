@@ -35,7 +35,6 @@ export default function App() {
 
   // Live Room State aus Firebase Realtime Database
   const [roomData, setRoomData] = useState(null);
-  const [scoreDeltas, setScoreDeltas] = useState({});
 
   // Reset beim Zurückkehren zur Startseite
   useEffect(() => {
@@ -91,22 +90,6 @@ export default function App() {
         setInputCode('');
         setErrorMessage('Der Moderator hat den Raum geschlossen.');
         return;
-      }
-
-      // Nur animieren, wenn sich Punkte tatsächlich verändern (Differenz ermitteln)
-      if (data?.players && roomData?.players) {
-        Object.keys(data.players).forEach(pName => {
-          const oldScore = roomData.players[pName]?.score || 0;
-          const newScore = data.players[pName]?.score || 0;
-          const diff = newScore - oldScore;
-
-          if (diff !== 0) {
-            setScoreDeltas(prev => ({ ...prev, [pName]: diff }));
-            setTimeout(() => {
-              setScoreDeltas(prev => ({ ...prev, [pName]: null }));
-            }, 2500);
-          }
-        });
       }
 
       setRoomData(data);
@@ -1006,22 +989,14 @@ export default function App() {
         )}
       </div>
 
-      {/* Leaderboard mit exakt schwebendem Differenz-Wert (+ / -) */}
+      {/* Leaderboard ohne Plus-/Minus-Animationen */}
       <div className="grid grid-cols-4 gap-4">
-        {playerList.map(p => {
-          const delta = scoreDeltas[p.name];
-          return (
-            <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center relative overflow-hidden">
-              {delta !== undefined && delta !== null && delta !== 0 && (
-                <span className={`absolute -top-1 left-1/2 transform -translate-x-1/2 text-base font-black animate-bounce ${delta > 0 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]'}`}>
-                  {delta > 0 ? `+${delta}` : delta}
-                </span>
-              )}
-              <p className="text-xs text-slate-400 truncate">{p.name}</p>
-              <p className="text-xl font-black text-indigo-400">{p.score} Pkt.</p>
-            </div>
-          );
-        })}
+        {playerList.map(p => (
+          <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center relative overflow-hidden">
+            <p className="text-xs text-slate-400 truncate">{p.name}</p>
+            <p className="text-xl font-black text-indigo-400">{p.score} Pkt.</p>
+          </div>
+        ))}
       </div>
     </div>
   );
