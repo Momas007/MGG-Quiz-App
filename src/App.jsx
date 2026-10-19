@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, onValue, set, update, get, child, remove } from 'firebase/database';
+import { getDatabase, ref, onValue, set, update, get, child, remove, push } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight, Radio
+  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight, Radio, FolderPlus, BookOpen, Layers
 } from 'lucide-react';
 
 // Firebase Konfiguration
@@ -22,7 +22,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 export default function App() {
-  const [role, setRole] = useState(null); // 'host' | 'player' | 'tv'
+  const [role, setRole] = useState(null); // 'host' | 'player' | 'tv' | 'collection_creator'
   const [roomCode, setRoomCode] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [inputCode, setInputCode] = useState('');
@@ -30,11 +30,36 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [playerTextAnswer, setPlayerTextAnswer] = useState('');
 
+  // Kollektion Erstellungs State
+  const [collHeader, setCollHeader] = useState('');
+  const [collCount, setCollCount] = useState(3);
+  const [collCreatorStep, setCollCreatorStep] = useState(0); // 0: Setup, 1: Fragen eingeben
+  const [collQuestions, setCollQuestions] = useState([]);
+  const [currentCollQIndex, setCurrentCollQIndex] = useState(0);
+  const [publicCollections, setPublicCollections] = useState({});
+
+  // Aktuelle Frage beim Erstellen einer temporären Frage
+  const [tempQText, setTempQText] = useState('');
+  const [tempQType, setTempQType] = useState('mc');
+  const [tempQOptions, setTempQOptions] = useState(['', '', '', '']);
+  const [tempQCorrectOpt, setTempQCorrectOpt] = useState(0);
+  const [tempQCorrectText, setTempQCorrectText] = useState('');
+  const [tempQPoints, setTempQPoints] = useState(100);
+
   // Lokaler Moderator Preview Index
   const [hostPreviewIndex, setHostPreviewIndex] = useState(0);
 
   // Live Room State aus Firebase Realtime Database
   const [roomData, setRoomData] = useState(null);
+
+  // Öffentliche Kollektionen beim Start laden
+  useEffect(() => {
+    const collRef = ref(db, 'collections');
+    const unsub = onValue(collRef, (snapshot) => {
+      setPublicCollections(snapshot.val() || {});
+    });
+    return () => unsub();
+  }, []);
 
   // Reset beim Zurückkehren zur Startseite
   useEffect(() => {
@@ -87,7 +112,7 @@ export default function App() {
     }
   };
 
-  // Synchronisierung mit Firebase
+  // Synchronisierung mit Firebase Raum
   useEffect(() => {
     if (!roomCode) return;
     const roomRef = ref(db, `rooms/${roomCode}`);
@@ -117,8 +142,8 @@ export default function App() {
   };
 
   // Raum Erstellen (Als Moderator)
-  const handleCreateRoom = async (e) => {
-    e.preventDefault();
+  const handleCreateRoom = async (e, loadedQuestions = []) => {
+    if (e) e.preventDefault();
     if (!playerName.trim()) return;
     const newCode = generateCode();
     
@@ -127,7 +152,7 @@ export default function App() {
         host: playerName.trim(),
         createdAt: Date.now(),
         currentQuestionIndex: -1,
-        questions: [],
+        questions: loadedQuestions,
         players: {},
         buzzedPlayer: null,
         buzzerLocked: false,
@@ -176,7 +201,6 @@ export default function App() {
     );
 
     if (!existingPlayerKey) {
-      // Neuer Spieler -> Neu anlegen
       await update(ref(db, `rooms/${cleanCode}/players/${cleanName}`), {
         name: cleanName,
         score: 0,
@@ -184,7 +208,6 @@ export default function App() {
         selected: false
       });
     } else {
-      // Existierender Spieler -> Vorhandene Antwort abrufen, falls vorhanden
       const existingAns = existingPlayers[existingPlayerKey]?.answer;
       if (existingAns !== null && existingAns !== undefined) {
         setPlayerTextAnswer(existingAns);
@@ -325,7 +348,6 @@ export default function App() {
   const handleSubmitAnswer = async (answerVal) => {
     if (!roomCode || !playerName) return;
     
-    // Verhindern, dass eine bereits eingereichte Antwort ohne Moderator-Erlaubnis überschrieben wird
     const currentAns = roomData?.players?.[playerName]?.answer;
     if (currentAns !== null && currentAns !== undefined) return;
 
@@ -413,12 +435,12 @@ export default function App() {
     await update(ref(db), updates);
   };
 
-  // --- HOME / LOGIN SCREEN ---
+  // --- HOME / LOGIN & KOLLEKTIONS-CREATOR SCREEN ---
   if (!role) {
     return (
       <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700">
-          <div className="text-center mb-6">
+        <div className="max-w-md w-full bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700 space-y-6">
+          <div className="text-center">
             <div className="inline-flex p-3 bg-indigo-600/20 text-indigo-400 rounded-2xl mb-3">
               <Sparkles className="w-10 h-10" />
             </div>
@@ -427,82 +449,284 @@ export default function App() {
           </div>
 
           {errorMessage && (
-            <div className="mb-4 p-3 bg-rose-500/20 border border-rose-500/50 rounded-xl text-rose-300 text-xs flex items-center gap-2">
+            <div className="p-3 bg-rose-500/20 border border-rose-500/50 rounded-xl text-rose-300 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" /> {errorMessage}
             </div>
           )}
 
-          <div className="mb-6">
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Dein Name</label>
-            <div className="relative">
-              <User className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
-              <input
-                type="text"
-                placeholder="z. B. Alex"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-indigo-500"
-              />
+          {role === 'collection_creator' ? (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center pb-3 border-b border-slate-700">
+                <h3 className="text-sm font-bold text-indigo-400">Kollektion erstellen</h3>
+                <span className="text-xs text-slate-400">Frage {currentCollQIndex + 1} von {collCount}</span>
+              </div>
+
+              {collCreatorStep === 0 ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Header-Name der Kollektion</label>
+                    <input
+                      type="text"
+                      placeholder="z. B. Geografie Quiz Deluxe"
+                      value={collHeader}
+                      onChange={(e) => setCollHeader(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Anzahl der Fragen</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={collCount}
+                      onChange={(e) => setCollCount(Math.max(1, Number(e.target.value)))}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white"
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!collHeader.trim()) return;
+                      setCollCreatorStep(1);
+                      setCurrentCollQIndex(0);
+                      setCollQuestions([]);
+                    }}
+                    disabled={!collHeader.trim()}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl transition"
+                  >
+                    Weiter zur Fragen-Eingabe
+                  </button>
+                  <button onClick={() => setRole(null)} className="w-full text-xs text-slate-400 hover:text-white py-2">
+                    Abbrechen
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Fragetext</label>
+                    <input
+                      type="text"
+                      placeholder="Fragetext eingeben..."
+                      value={tempQText}
+                      onChange={(e) => setTempQText(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      value={tempQType}
+                      onChange={(e) => setTempQType(e.target.value)}
+                      className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                    >
+                      <option value="mc">Multiple Choice</option>
+                      <option value="buzzer">Buzzer</option>
+                      <option value="freetext">Freitext</option>
+                    </select>
+                    <input
+                      type="number"
+                      placeholder="Punkte"
+                      value={tempQPoints}
+                      onChange={(e) => setTempQPoints(Number(e.target.value))}
+                      className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                    />
+                  </div>
+
+                  {tempQType === 'mc' && (
+                    <div className="space-y-2">
+                      {tempQOptions.map((opt, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-500">{['A','B','C','D'][idx]}</span>
+                          <input
+                            type="text"
+                            placeholder={`Option ${['A','B','C','D'][idx]}`}
+                            value={opt}
+                            onChange={(e) => {
+                              const updated = [...tempQOptions];
+                              updated[idx] = e.target.value;
+                              setTempQOptions(updated);
+                            }}
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                          />
+                          <input
+                            type="radio"
+                            name="tempCorrect"
+                            checked={tempQCorrectOpt === idx}
+                            onChange={() => setTempQCorrectOpt(idx)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {tempQType === 'freetext' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Musterantwort</label>
+                      <input
+                        type="text"
+                        placeholder="Richtige Antwort"
+                        value={tempQCorrectText}
+                        onChange={(e) => setTempQCorrectText(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      if (!tempQText.trim()) return;
+                      const newQ = {
+                        id: Date.now() + currentCollQIndex,
+                        text: tempQText,
+                        type: tempQType,
+                        options: tempQType === 'mc' ? [...tempQOptions] : [],
+                        correctOption: tempQType === 'mc' ? tempQCorrectOpt : null,
+                        correctText: tempQType === 'freetext' ? tempQCorrectText : '',
+                        points: tempQPoints
+                      };
+
+                      const updatedQuestions = [...collQuestions, newQ];
+                      setCollQuestions(updatedQuestions);
+
+                      // Reset temp inputs
+                      setTempQText('');
+                      setTempQOptions(['', '', '', '']);
+                      setTempQCorrectText('');
+
+                      if (currentCollQIndex + 1 < collCount) {
+                        setCurrentCollQIndex(currentCollQIndex + 1);
+                      } else {
+                        // In Firebase speichern
+                        push(ref(db, 'collections'), {
+                          header: collHeader,
+                          createdAt: Date.now(),
+                          questions: updatedQuestions
+                        });
+                        setRole(null);
+                        setCollCreatorStep(0);
+                        alert('Kollektion erfolgreich erstellt und gespeichert!');
+                      }
+                    }}
+                    disabled={!tempQText.trim()}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl transition text-sm"
+                  >
+                    {currentCollQIndex + 1 < collCount ? 'Nächste Frage' : 'Kollektion Fertigstellen & Speichern'}
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <form onSubmit={handleCreateRoom} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
-              <h3 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-indigo-400" /> Als Moderator Raum erstellen
-              </h3>
-              <button
-                type="submit"
-                disabled={!playerName.trim()}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition"
-              >
-                Neuen Live-Raum erstellen
-              </button>
-            </form>
-
-            <form onSubmit={handleJoinRoom} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
-              <h3 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-emerald-400" /> Einem Raum beitreten / Hot-Join
-              </h3>
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  maxLength={5}
-                  placeholder="5-stelliger Code"
-                  value={inputCode}
-                  onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-center text-lg font-mono tracking-widest uppercase focus:outline-none focus:border-emerald-500"
-                />
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Dein Name</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="z. B. Alex"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
               </div>
-              <button
-                type="submit"
-                disabled={!playerName.trim() || inputCode.length !== 5}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition"
-              >
-                Raum betreten
-              </button>
-            </form>
 
-            <form onSubmit={handleJoinTV} className="pt-2 text-center">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  maxLength={5}
-                  placeholder="CODE"
-                  value={inputCode}
-                  onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                  className="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-center font-mono text-sm uppercase"
-                />
-                <button
-                  type="submit"
-                  disabled={inputCode.length !== 5}
-                  className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs py-2 rounded-lg flex items-center justify-center gap-2"
-                >
-                  <Tv className="w-4 h-4" /> TV / Discord Ansicht
-                </button>
+              <div className="grid grid-cols-1 gap-4">
+                <form onSubmit={(e) => handleCreateRoom(e, [])} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+                  <h3 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-indigo-400" /> Als Moderator Raum erstellen
+                  </h3>
+                  <button
+                    type="submit"
+                    disabled={!playerName.trim()}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition"
+                  >
+                    Leeren Raum erstellen
+                  </button>
+                </form>
+
+                {/* Kollektion laden / auswählen */}
+                {Object.keys(publicCollections).length > 0 && (
+                  <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 space-y-3">
+                    <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-emerald-400" /> Mit Kollektion starten
+                    </h3>
+                    {Object.entries(publicCollections).map(([cKey, cData]) => (
+                      <div key={cKey} className="flex items-center justify-between bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+                        <div>
+                          <p className="text-xs font-bold text-white">{cData.header}</p>
+                          <p className="text-[10px] text-slate-400">{cData.questions?.length || 0} Fragen</p>
+                        </div>
+                        <button
+                          onClick={() => handleCreateRoom(null, cData.questions || [])}
+                          disabled={!playerName.trim()}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg"
+                        >
+                          Raum mit Kollektion
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="text-center pt-1">
+                  <button
+                    onClick={() => {
+                      setRole('collection_creator');
+                      setCollCreatorStep(0);
+                      setCollHeader('');
+                      setCollCount(3);
+                    }}
+                    className="text-xs text-indigo-400 hover:underline flex items-center justify-center gap-1 mx-auto font-medium"
+                  >
+                    <FolderPlus className="w-4 h-4" /> Neue Fragen-Kollektion erstellen
+                  </button>
+                </div>
+
+                <form onSubmit={handleJoinRoom} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+                  <h3 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-emerald-400" /> Einem Raum beitreten / Hot-Join
+                  </h3>
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      type="text"
+                      maxLength={5}
+                      placeholder="5-stelliger Code"
+                      value={inputCode}
+                      onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-center text-lg font-mono tracking-widest uppercase focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!playerName.trim() || inputCode.length !== 5}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition"
+                  >
+                    Raum betreten
+                  </button>
+                </form>
+
+                <form onSubmit={handleJoinTV} className="pt-2 text-center">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      maxLength={5}
+                      placeholder="CODE"
+                      value={inputCode}
+                      onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                      className="w-24 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-center font-mono text-sm uppercase"
+                    />
+                    <button
+                      type="submit"
+                      disabled={inputCode.length !== 5}
+                      className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs py-2 rounded-lg flex items-center justify-center gap-2"
+                    >
+                      <Tv className="w-4 h-4" /> TV / Discord Ansicht
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1028,7 +1252,7 @@ export default function App() {
         )}
       </div>
 
-      {/* Sauberes Leaderboard ohne jegliche Animationen */}
+      {/* Leaderboard */}
       <div className="grid grid-cols-4 gap-4">
         {playerList.map(p => (
           <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center relative overflow-hidden">
