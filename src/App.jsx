@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, get, child } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Sparkles, LogOut, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award
+  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X
 } from 'lucide-react';
 
 // Firebase Konfiguration
@@ -218,6 +218,21 @@ export default function App() {
     });
   };
 
+  const handleEvaluateBuzzer = async (isCorrect) => {
+    if (!roomData?.buzzedPlayer) return;
+    const bPlayer = roomData.buzzedPlayer;
+    const pts = currentQ ? currentQ.points : 100;
+    const currentScore = roomData?.players?.[bPlayer]?.score || 0;
+    const newScore = isCorrect ? currentScore + pts : currentScore - Math.round(pts / 2);
+
+    if (isCorrect) playSound('correct');
+
+    await update(ref(db, `rooms/${roomCode}`), {
+      [`players/${bPlayer}/score`]: newScore,
+      buzzedPlayer: null
+    });
+  };
+
   const handleSubmitAnswer = async (answerVal) => {
     if (!roomCode || !playerName) return;
     await update(ref(db, `rooms/${roomCode}/players/${playerName}`), {
@@ -234,7 +249,9 @@ export default function App() {
 
   const togglePlayerReveal = async (pName) => {
     const currentRev = roomData?.revealedPlayers?.[pName] || false;
-    await update(ref(db, `rooms/${roomCode}/revealedPlayers/${pName}`), !currentRev);
+    await update(ref(db, `rooms/${roomCode}/revealedPlayers`), {
+      [pName]: !currentRev
+    });
   };
 
   const handleAwardPoints = async (pName, pts) => {
@@ -248,7 +265,7 @@ export default function App() {
 
   const awardPointsToSelected = async () => {
     if (!roomData?.players) return;
-    const pts = roomData?.questions?.[roomData?.currentQuestionIndex]?.points || 100;
+    const pts = currentQ ? currentQ.points : 100;
     const updates = {};
     
     Object.values(roomData.players).forEach(p => {
@@ -268,7 +285,27 @@ export default function App() {
   };
 
   const toggleReveal = async () => {
-    await update(ref(db, `rooms/${roomCode}`), { revealedAnswer: !roomData?.revealedAnswer });
+    const nextRevealed = !roomData?.revealedAnswer;
+    const updates = {
+      [`rooms/${roomCode}/revealedAnswer`]: nextRevealed
+    };
+
+    // Automatische Auswertung für MC-Fragen
+    if (nextRevealed && currentQ && currentQ.type === 'mc') {
+      const pts = currentQ.points || 100;
+      const targetOpt = currentQ.correctOption;
+
+      if (roomData?.players) {
+        Object.values(roomData.players).forEach(p => {
+          if (p.answer === targetOpt) {
+            updates[`rooms/${roomCode}/players/${p.name}/score`] = (p.score || 0) + pts;
+          }
+        });
+        playSound('correct');
+      }
+    }
+
+    await update(ref(db), updates);
   };
 
   // --- HOME / LOGIN SCREEN ---
@@ -401,7 +438,7 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-700">
                     <span className="text-xs text-indigo-400 font-semibold uppercase block mb-1">
-                      Typ: {currentQ.type === 'mc' ? 'Multiple Choice' : currentQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'}
+                      Typ: {currentQ.type === 'mc' ? 'Multiple Choice (Auto-Scoring)' : currentQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'}
                     </span>
                     <p className="text-xl font-semibold text-white">{currentQ.text}</p>
                     
@@ -410,18 +447,33 @@ export default function App() {
                     )}
                   </div>
 
+                  {/* Buzzer Bewertung (Richtig / Falsch) */}
+                  {currentQ.type === 'buzzer' && roomData?.buzzedPlayer && (
+                    <div className="p-4 bg-amber-500/20 border border-amber-500/50 rounded-xl space-y-3">
+                      <p className="text-sm font-bold text-amber-300 flex items-center justify-between">
+                        <span>🔔 Gebuzzert von: {roomData.buzzedPlayer}</span>
+                      </p>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEvaluateBuzzer(true)} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                          <Check className="w-5 h-5"/> Richtig (+{currentQ.points} Pkt.)
+                        </button>
+                        <button onClick={() => handleEvaluateBuzzer(false)} className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                          <X className="w-5 h-5"/> Falsch (-{Math.round(currentQ.points / 2)} Pkt.)
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap gap-3">
                     <button onClick={toggleReveal} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition">
-                      {roomData?.revealedAnswer ? 'Musterantwort verbergen' : 'Musterantwort auflösen'}
+                      {roomData?.revealedAnswer ? 'Antwort verbergen' : 'Antwort auflösen (Auto-Punkte bei A,B,C,D)'}
                     </button>
-                    {currentQ.type === 'buzzer' && (
-                      <button onClick={resetBuzzer} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-medium transition">
-                        Buzzer zurücksetzen
+
+                    {currentQ.type === 'freetext' && (
+                      <button onClick={awardPointsToSelected} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition">
+                        <Award className="w-4 h-4"/> Punkte an angehakte Spieler (+{currentQ.points})
                       </button>
                     )}
-                    <button onClick={awardPointsToSelected} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition">
-                      <Award className="w-4 h-4"/> Punkte an angehakte Spieler vergeben (+{currentQ.points})
-                    </button>
                   </div>
                 </div>
               ) : (
@@ -525,16 +577,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* Spieler Liste & Antworten & Auswählen */}
+          {/* Spieler Liste & Antworten */}
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
             <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><UserCheck className="w-5 h-5"/> Spieler Live ({playerList.length})</h2>
-            
-            {currentQ?.type === 'buzzer' && roomData?.buzzedPlayer && (
-              <div className="mb-4 p-3 bg-amber-500/20 border border-amber-500/50 rounded-xl text-amber-300 font-bold flex justify-between items-center">
-                <span>🔔 Gebuzzert: {roomData.buzzedPlayer}</span>
-                <button onClick={resetBuzzer} className="text-xs underline">Reset</button>
-              </div>
-            )}
 
             <div className="space-y-3">
               {playerList.map(p => {
@@ -543,9 +588,11 @@ export default function App() {
                   <div key={p.name} className={`p-3 rounded-xl border transition ${p.selected ? 'bg-indigo-950/40 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => togglePlayerSelect(p.name)} className="text-indigo-400">
-                          {p.selected ? <CheckSquare className="w-5 h-5 text-indigo-400"/> : <Square className="w-5 h-5 text-slate-600"/>}
-                        </button>
+                        {currentQ?.type === 'freetext' && (
+                          <button onClick={() => togglePlayerSelect(p.name)} className="text-indigo-400">
+                            {p.selected ? <CheckSquare className="w-5 h-5 text-indigo-400"/> : <Square className="w-5 h-5 text-slate-600"/>}
+                          </button>
+                        )}
                         <div>
                           <p className="font-semibold text-white text-sm">{p.name}</p>
                           <p className="text-xs text-indigo-400">{p.score} Punkte</p>
@@ -557,20 +604,24 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Freitext Antwort des Spielers inkl. Enthalten/Verbergen Button */}
+                    {/* Eingereichte Antwort des Spielers */}
                     {p.answer !== null && p.answer !== undefined && (
                       <div className="pt-2 mt-2 border-t border-slate-800 flex items-center justify-between text-xs">
                         <div>
                           <span className="text-slate-500 block">Antwort:</span>
-                          <span className="text-emerald-300 font-medium">{p.answer}</span>
+                          <span className="text-emerald-300 font-medium">
+                            {currentQ?.type === 'mc' ? `Option ${['A','B','C','D'][p.answer]}` : p.answer}
+                          </span>
                         </div>
-                        <button 
-                          onClick={() => togglePlayerReveal(p.name)} 
-                          className={`px-2 py-1 rounded text-xs flex items-center gap-1 font-semibold ${isRevealed ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
-                        >
-                          {isRevealed ? <EyeOff className="w-3 h-3"/> : <Eye className="w-3 h-3"/>}
-                          {isRevealed ? 'Auf TV zeigen [Aktiv]' : 'Auf TV zeigen'}
-                        </button>
+                        {currentQ?.type === 'freetext' && (
+                          <button 
+                            onClick={() => togglePlayerReveal(p.name)} 
+                            className={`px-2 py-1 rounded text-xs flex items-center gap-1 font-semibold ${isRevealed ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                          >
+                            {isRevealed ? <EyeOff className="w-3 h-3"/> : <Eye className="w-3 h-3"/>}
+                            {isRevealed ? 'Auf TV [Aktiv]' : 'Auf TV zeigen'}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -718,7 +769,7 @@ export default function App() {
             {currentQ.type === 'freetext' && (
               <div className="grid grid-cols-2 gap-4 pt-4">
                 {playerList.filter(p => roomData?.revealedPlayers?.[p.name]).map(p => (
-                  <div key={p.name} className="p-4 bg-slate-900 border-2 border-indigo-500 rounded-xl text-left animate-fade-in">
+                  <div key={p.name} className="p-4 bg-slate-900 border-2 border-indigo-500 rounded-xl text-left">
                     <span className="text-xs text-indigo-400 font-bold block">{p.name}:</span>
                     <span className="text-xl font-semibold text-white">{p.answer || 'Keine Antwort'}</span>
                   </div>
@@ -739,7 +790,7 @@ export default function App() {
 
       <div className="grid grid-cols-4 gap-4">
         {playerList.map(p => (
-          <div key={p.name} className={`p-4 rounded-xl border text-center transition ${p.selected ? 'bg-indigo-950/60 border-indigo-500' : 'bg-slate-900 border-slate-800'}`}>
+          <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
             <p className="text-xs text-slate-400 truncate">{p.name}</p>
             <p className="text-xl font-black text-indigo-400">{p.score} Pkt.</p>
           </div>
