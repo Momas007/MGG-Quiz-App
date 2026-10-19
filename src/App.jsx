@@ -6,7 +6,7 @@ import {
   Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
-// Firebase Konfiguration
+// Firebase Konfiguration 
 const firebaseConfig = {
   apiKey: "AIzaSyD-BSbLY3GF0a1C4_VXHFNuSHcHY6mnIFQ",
   authDomain: "mgg-quiz-app.firebaseapp.com",
