@@ -37,8 +37,9 @@ export default function App() {
   const [collQuestions, setCollQuestions] = useState([]);
   const [currentCollQIndex, setCurrentCollQIndex] = useState(0);
   const [publicCollections, setPublicCollections] = useState({});
+  const [selectedCollectionKey, setSelectedCollectionKey] = useState('');
 
-  // Aktuelle Frage beim Erstellen einer temporären Frage
+  // Aktuelle Frage beim Erstellen einer temporären Frage im Kollektions-Wizard
   const [tempQText, setTempQText] = useState('');
   const [tempQType, setTempQType] = useState('mc');
   const [tempQOptions, setTempQOptions] = useState(['', '', '', '']);
@@ -141,11 +142,17 @@ export default function App() {
     return code;
   };
 
-  // Raum Erstellen (Als Moderator)
-  const handleCreateRoom = async (e, loadedQuestions = []) => {
+  // Raum Erstellen (Als Moderator) - Berücksichtigt ausgewählte Kollektion oder Reset auf leer
+  const handleCreateRoom = async (e) => {
     if (e) e.preventDefault();
     if (!playerName.trim()) return;
     const newCode = generateCode();
+    
+    // Fragen aus der ausgewählten Kollektion laden (falls vorhanden)
+    let loadedQuestions = [];
+    if (selectedCollectionKey && publicCollections[selectedCollectionKey]) {
+      loadedQuestions = publicCollections[selectedCollectionKey].questions || [];
+    }
     
     try {
       await set(ref(db, `rooms/${newCode}`), {
@@ -457,7 +464,7 @@ export default function App() {
           {role === 'collection_creator' ? (
             <div className="space-y-4">
               <div className="flex justify-between items-center pb-3 border-b border-slate-700">
-                <h3 className="text-sm font-bold text-indigo-400">Kollektion erstellen</h3>
+                <h3 className="text-sm font-bold text-indigo-400">Fragen-Kollektion erstellen</h3>
                 <span className="text-xs text-slate-400">Frage {currentCollQIndex + 1} von {collCount}</span>
               </div>
 
@@ -631,42 +638,35 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                <form onSubmit={(e) => handleCreateRoom(e, [])} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
-                  <h3 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                <form onSubmit={handleCreateRoom} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 space-y-3">
+                  <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
                     <Shield className="w-4 h-4 text-indigo-400" /> Als Moderator Raum erstellen
                   </h3>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Fragen-Kollektion wählen</label>
+                    <select
+                      value={selectedCollectionKey}
+                      onChange={(e) => setSelectedCollectionKey(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white"
+                    >
+                      <option value="">--- Leerer Raum (Keine Kollektion / Reset) ---</option>
+                      {Object.entries(publicCollections).map(([cKey, cData]) => (
+                        <option key={cKey} value={cKey}>
+                          {cData.header} ({cData.questions?.length || 0} Fragen)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={!playerName.trim()}
                     className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition"
                   >
-                    Leeren Raum erstellen
+                    Raum mit gewählter Kollektion erstellen
                   </button>
                 </form>
-
-                {/* Kollektion laden / auswählen */}
-                {Object.keys(publicCollections).length > 0 && (
-                  <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-emerald-400" /> Mit Kollektion starten
-                    </h3>
-                    {Object.entries(publicCollections).map(([cKey, cData]) => (
-                      <div key={cKey} className="flex items-center justify-between bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-                        <div>
-                          <p className="text-xs font-bold text-white">{cData.header}</p>
-                          <p className="text-[10px] text-slate-400">{cData.questions?.length || 0} Fragen</p>
-                        </div>
-                        <button
-                          onClick={() => handleCreateRoom(null, cData.questions || [])}
-                          disabled={!playerName.trim()}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg"
-                        >
-                          Raum mit Kollektion
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
 
                 <div className="text-center pt-1">
                   <button
@@ -886,7 +886,7 @@ export default function App() {
                   )}
                 </div>
               ) : (
-                <p className="text-slate-500 text-sm">Keine Frage vorhanden. Erstelle unten deine erste Frage.</p>
+                <p className="text-slate-500 text-sm">Keine Frage in diesem Raum vorhanden. Erstelle unten deine erste Frage.</p>
               )}
             </div>
 
@@ -990,50 +990,54 @@ export default function App() {
             <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><UserCheck className="w-5 h-5"/> Spieler Live ({playerList.length})</h2>
 
             <div className="space-y-3">
-              {playerList.map(p => {
-                const isRevealed = roomData?.revealedPlayers?.[p.name];
-                return (
-                  <div key={p.name} className={`p-3 rounded-xl border transition ${p.selected ? 'bg-indigo-950/40 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        {liveQ?.type === 'freetext' && (
-                          <button onClick={() => togglePlayerSelect(p.name)} className="text-indigo-400">
-                            {p.selected ? <CheckSquare className="w-5 h-5 text-indigo-400"/> : <Square className="w-5 h-5 text-slate-600"/>}
-                          </button>
-                        )}
-                        <div>
-                          <p className="font-semibold text-white text-sm">{p.name}</p>
-                          <p className="text-xs text-indigo-400">{p.score} Punkte</p>
+              {playerList.length === 0 ? (
+                <p className="text-slate-500 text-xs">Noch keine Spieler beigetreten.</p>
+              ) : (
+                playerList.map(p => {
+                  const isRevealed = roomData?.revealedPlayers?.[p.name];
+                  return (
+                    <div key={p.name} className={`p-3 rounded-xl border transition ${p.selected ? 'bg-indigo-950/40 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          {liveQ?.type === 'freetext' && (
+                            <button onClick={() => togglePlayerSelect(p.name)} className="text-indigo-400">
+                              {p.selected ? <CheckSquare className="w-5 h-5 text-indigo-400"/> : <Square className="w-5 h-5 text-slate-600"/>}
+                            </button>
+                          )}
+                          <div>
+                            <p className="font-semibold text-white text-sm">{p.name}</p>
+                            <p className="text-xs text-indigo-400">{p.score} Punkte</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => handleAwardPoints(p.name, liveQ ? liveQ.points : 100)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{liveQ ? liveQ.points : 100}</button>
+                          <button onClick={() => handleAwardPoints(p.name, -50)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-50</button>
                         </div>
                       </div>
-                      <div className="flex gap-1">
-                        <button onClick={() => handleAwardPoints(p.name, liveQ ? liveQ.points : 100)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{liveQ ? liveQ.points : 100}</button>
-                        <button onClick={() => handleAwardPoints(p.name, -50)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-50</button>
-                      </div>
-                    </div>
 
-                    {p.answer !== null && p.answer !== undefined && (
-                      <div className="pt-2 mt-2 border-t border-slate-800 flex items-center justify-between text-xs">
-                        <div>
-                          <span className="text-slate-500 block">Antwort:</span>
-                          <span className="text-emerald-300 font-medium">
-                            {liveQ?.type === 'mc' ? `Option ${['A','B','C','D'][p.answer]}` : p.answer}
-                          </span>
+                      {p.answer !== null && p.answer !== undefined && (
+                        <div className="pt-2 mt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+                          <div>
+                            <span className="text-slate-500 block">Antwort:</span>
+                            <span className="text-emerald-300 font-medium">
+                              {liveQ?.type === 'mc' ? `Option ${['A','B','C','D'][p.answer]}` : p.answer}
+                            </span>
+                          </div>
+                          {liveQ?.type === 'freetext' && (
+                            <button 
+                              onClick={() => togglePlayerReveal(p.name)} 
+                              className={`px-2 py-1 rounded text-xs flex items-center gap-1 font-semibold ${isRevealed ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                            >
+                              {isRevealed ? <EyeOff className="w-3 h-3"/> : <Eye className="w-3 h-3"/>}
+                              {isRevealed ? 'Auf TV [Aktiv]' : 'Auf TV zeigen'}
+                            </button>
+                          )}
                         </div>
-                        {liveQ?.type === 'freetext' && (
-                          <button 
-                            onClick={() => togglePlayerReveal(p.name)} 
-                            className={`px-2 py-1 rounded text-xs flex items-center gap-1 font-semibold ${isRevealed ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
-                          >
-                            {isRevealed ? <EyeOff className="w-3 h-3"/> : <Eye className="w-3 h-3"/>}
-                            {isRevealed ? 'Auf TV [Aktiv]' : 'Auf TV zeigen'}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
