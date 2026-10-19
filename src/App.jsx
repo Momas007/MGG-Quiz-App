@@ -178,7 +178,7 @@ export default function App() {
     setRole('tv');
   };
 
-  // Raum komplett löschen (Moderator schließt den Raum)
+  // Raum komplett löschen
   const handleLeaveHost = async () => {
     if (roomCode && role === 'host') {
       try {
@@ -285,7 +285,7 @@ export default function App() {
     await update(ref(db, `rooms/${roomCode}`), {
       [`players/${bPlayer}/score`]: newScore,
       buzzedPlayer: null,
-      buzzerLocked: isCorrect // Wenn richtig geantwortet wurde -> Buzzer sperren
+      buzzerLocked: isCorrect
     });
   };
 
@@ -300,7 +300,6 @@ export default function App() {
     });
   };
 
-  // Antwort-Korrektur anfordern (vom Spieler)
   const handleRequestEdit = async () => {
     if (!roomCode || !playerName) return;
     await update(ref(db, `rooms/${roomCode}/editRequests`), {
@@ -308,7 +307,6 @@ export default function App() {
     });
   };
 
-  // Korrektur-Entscheidung (vom Moderator)
   const handleRespondEditRequest = async (pName, isAllowed) => {
     const updates = {
       [`rooms/${roomCode}/editRequests/${pName}`]: isAllowed ? 'approved' : 'rejected'
@@ -348,7 +346,6 @@ export default function App() {
       [`rooms/${roomCode}/revealedAnswer`]: nextRevealed
     };
 
-    // Auto-Punkte bei A, B, C, D
     if (nextRevealed && currentQ && currentQ.type === 'mc') {
       const pts = currentQ.points || 100;
       const targetOpt = currentQ.correctOption;
@@ -363,7 +360,6 @@ export default function App() {
       }
     }
 
-    // Auto-Punkte bei Freitext an angehakte Spieler
     if (nextRevealed && currentQ && currentQ.type === 'freetext') {
       const pts = currentQ.points || 100;
       if (roomData?.players) {
@@ -504,7 +500,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Antrags-Benachrichtigungen für Antwort-Edits */}
         {Object.entries(editRequests).filter(([_, status]) => status === 'pending').map(([pName]) => (
           <div key={pName} className="mb-6 p-4 bg-indigo-600/20 border border-indigo-500 rounded-xl flex items-center justify-between animate-pulse">
             <span className="text-sm font-semibold text-indigo-200">
@@ -534,7 +529,6 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Buzzer Bewertung */}
                   {currentQ.type === 'buzzer' && (
                     <div className="p-4 bg-amber-500/20 border border-amber-500/50 rounded-xl space-y-3">
                       <div className="flex items-center justify-between">
@@ -572,7 +566,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Frage Anlegen */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
               <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><Plus className="w-5 h-5"/> Neue Frage erstellen</h2>
               <form onSubmit={addQuestion} className="space-y-4">
@@ -648,7 +641,6 @@ export default function App() {
               </form>
             </div>
 
-            {/* Fragenliste */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
               <h3 className="text-sm font-bold text-slate-400 mb-3">Erstellte Fragen ({currentQuestions.length})</h3>
               <div className="space-y-2">
@@ -670,7 +662,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Spieler Liste & Antworten */}
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
             <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><UserCheck className="w-5 h-5"/> Spieler Live ({playerList.length})</h2>
 
@@ -697,7 +688,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Eingereichte Antwort des Spielers */}
                     {p.answer !== null && p.answer !== undefined && (
                       <div className="pt-2 mt-2 border-t border-slate-800 flex items-center justify-between text-xs">
                         <div>
@@ -873,7 +863,6 @@ export default function App() {
             </span>
             <h2 className="text-4xl font-extrabold">{currentQ.text}</h2>
 
-            {/* A, B, C, D Optionen inkl. Namensanzeige wer was gewählt hat */}
             {currentQ.type === 'mc' && (
               <div className="grid grid-cols-2 gap-4 pt-4">
                 {currentQ.options.map((opt, idx) => {
@@ -893,7 +882,6 @@ export default function App() {
                         <span className="text-indigo-400 mr-3 font-bold">{['A','B','C','D'][idx]}:</span> {opt}
                       </p>
 
-                      {/* Zeige Mitspieler, die diese Option gewählt haben, nach Auflösung */}
                       {roomData?.revealedAnswer && playersWhoChoseThis.length > 0 && (
                         <div className="mt-3 pt-2 border-t border-slate-800/80 flex flex-wrap gap-1">
                           {playersWhoChoseThis.map(p => (
@@ -909,14 +897,12 @@ export default function App() {
               </div>
             )}
 
-            {/* Freitext Musterantwort auflösen */}
             {currentQ.type === 'freetext' && roomData?.revealedAnswer && (
               <div className="p-6 bg-emerald-600/20 border-2 border-emerald-500 rounded-2xl text-emerald-200 text-2xl font-bold inline-block">
                 Musterantwort: {currentQ.correctText || 'Keine Angabe'}
               </div>
             )}
 
-            {/* Einzelne freigeschaltete Spieler-Antworten anzeigen */}
             {currentQ.type === 'freetext' && (
               <div className="grid grid-cols-2 gap-4 pt-4">
                 {playerList.filter(p => roomData?.revealedPlayers?.[p.name]).map(p => (
@@ -939,14 +925,14 @@ export default function App() {
         )}
       </div>
 
-      {/* Leaderboard mit Punkte-Animation (+ / -) */}
+      {/* Leaderboard mit schwebenden Live-Punkten (+ / -) */}
       <div className="grid grid-cols-4 gap-4">
         {playerList.map(p => {
           const delta = scoreDeltas[p.name];
           return (
             <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center relative overflow-hidden">
               {delta !== undefined && delta !== null && (
-                <span className={`absolute top-1 right-2 text-sm font-black animate-bounce ${delta > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <span className={`absolute -top-1 left-1/2 transform -translate-x-1/2 text-base font-black animate-bounce ${delta > 0 ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]'}`}>
                   {delta > 0 ? `+${delta}` : delta}
                 </span>
               )}
