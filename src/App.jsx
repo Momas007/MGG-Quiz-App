@@ -3,10 +3,10 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, get, child, remove } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight
+  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight, Radio
 } from 'lucide-react';
 
-// Firebase Konfiguration 
+// Firebase Konfiguration
 const firebaseConfig = {
   apiKey: "AIzaSyD-BSbLY3GF0a1C4_VXHFNuSHcHY6mnIFQ",
   authDomain: "mgg-quiz-app.firebaseapp.com",
@@ -29,6 +29,9 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [playerTextAnswer, setPlayerTextAnswer] = useState('');
+
+  // Lokaler Moderator Preview Index
+  const [hostPreviewIndex, setHostPreviewIndex] = useState(0);
 
   // Live Room State aus Firebase Realtime Database
   const [roomData, setRoomData] = useState(null);
@@ -82,7 +85,6 @@ export default function App() {
     const unsubscribe = onValue(roomRef, (snapshot) => {
       const data = snapshot.val();
       
-      // Wenn Raum gelöscht wurde -> zurück auf Startseite
       if (!data && role) {
         setRole(null);
         setRoomCode('');
@@ -91,7 +93,6 @@ export default function App() {
         return;
       }
 
-      // Punkte-Veränderungen für TV-Animation tracken
       if (data?.players && roomData?.players) {
         Object.keys(data.players).forEach(pName => {
           const oldScore = roomData.players[pName]?.score || 0;
@@ -120,7 +121,6 @@ export default function App() {
     return code;
   };
 
-  // Raum Erstellen (Als Moderator)
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     if (!playerName.trim()) return;
@@ -142,13 +142,13 @@ export default function App() {
 
       setRoomCode(newCode);
       setRole('host');
+      setHostPreviewIndex(0);
       setErrorMessage('');
     } catch (err) {
       setErrorMessage('Fehler beim Erstellen des Raums.');
     }
   };
 
-  // Raum Beitreten
   const handleJoinRoom = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -188,7 +188,6 @@ export default function App() {
     setRole('tv');
   };
 
-  // Raum komplett löschen
   const handleLeaveHost = async () => {
     if (roomCode && role === 'host') {
       try {
@@ -202,7 +201,6 @@ export default function App() {
     setInputCode('');
   };
 
-  // Mitspieler verlässt den Raum
   const handleLeavePlayer = async () => {
     if (roomCode && playerName && role === 'player') {
       try {
@@ -250,7 +248,8 @@ export default function App() {
     setNewCorrectText('');
   };
 
-  const setQuestionIndex = async (idx) => {
+  // Moderator gibt die ausgewählte Frage jetzt exakt für alle frei
+  const releaseQuestionToLive = async (idx) => {
     const resetPlayers = { ...roomData?.players };
     Object.keys(resetPlayers).forEach(pKey => {
       resetPlayers[pKey].answer = null;
@@ -273,7 +272,7 @@ export default function App() {
     const filtered = currentQuestions.filter(q => q.id !== qId);
     await update(ref(db, `rooms/${roomCode}`), {
       questions: filtered,
-      currentQuestionIndex: filtered.length === 0 ? -1 : 0
+      currentQuestionIndex: filtered.length === 0 ? -1 : roomData?.currentQuestionIndex
     });
   };
 
@@ -490,8 +489,13 @@ export default function App() {
   }
 
   const currentQuestions = roomData?.questions || [];
-  const currentQIndex = roomData?.currentQuestionIndex ?? -1;
-  const currentQ = currentQIndex >= 0 ? currentQuestions[currentQIndex] : null;
+  const liveQIndex = roomData?.currentQuestionIndex ?? -1;
+  const liveQ = liveQIndex >= 0 ? currentQuestions[liveQIndex] : null;
+
+  // Die Frage, die der Moderator aktuell im Vorschau-Modus betrachert
+  const previewQ = currentQuestions[hostPreviewIndex] || null;
+  const isPreviewLive = hostPreviewIndex === liveQIndex;
+
   const playerList = roomData?.players ? Object.values(roomData.players) : [];
   const editRequests = roomData?.editRequests || {};
 
@@ -533,26 +537,39 @@ export default function App() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
+            
+            {/* MODERATOR CONTROL BOARD */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-indigo-400 flex items-center gap-2"><Play className="w-5 h-5"/> Live Steuerung</h2>
-                
-                {/* VORHERIGE / NÄCHSTE FRAGE PFEILE */}
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-indigo-400 flex items-center gap-2"><Eye className="w-5 h-5"/> Moderator Vorschau</h2>
+                  {isPreviewLive ? (
+                    <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-bold rounded-full flex items-center gap-1">
+                      <Radio className="w-3 h-3 animate-pulse" /> LIVE
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 bg-slate-700 text-slate-400 text-xs font-medium rounded-full">
+                      Nur Vorschau
+                    </span>
+                  )}
+                </div>
+
+                {/* VORHERIGE / NÄCHSTE FRAGE DURCHBLÄTTERN */}
                 {currentQuestions.length > 0 && (
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setQuestionIndex(Math.max(0, currentQIndex - 1))}
-                      disabled={currentQIndex <= 0}
+                      onClick={() => setHostPreviewIndex(Math.max(0, hostPreviewIndex - 1))}
+                      disabled={hostPreviewIndex <= 0}
                       className="p-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 flex items-center gap-1 text-xs font-semibold"
                     >
                       <ChevronLeft className="w-4 h-4"/> Vorherige
                     </button>
                     <span className="text-xs text-slate-400 font-mono">
-                      {currentQIndex >= 0 ? currentQIndex + 1 : 0} / {currentQuestions.length}
+                      {hostPreviewIndex + 1} / {currentQuestions.length}
                     </span>
                     <button
-                      onClick={() => setQuestionIndex(Math.min(currentQuestions.length - 1, currentQIndex + 1))}
-                      disabled={currentQIndex >= currentQuestions.length - 1}
+                      onClick={() => setHostPreviewIndex(Math.min(currentQuestions.length - 1, hostPreviewIndex + 1))}
+                      disabled={hostPreviewIndex >= currentQuestions.length - 1}
                       className="p-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 flex items-center gap-1 text-xs font-semibold"
                     >
                       Nächste <ChevronRight className="w-4 h-4"/>
@@ -561,56 +578,79 @@ export default function App() {
                 )}
               </div>
 
-              {currentQ ? (
+              {previewQ ? (
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-700">
                     <span className="text-xs text-indigo-400 font-semibold uppercase block mb-1">
-                      Typ: {currentQ.type === 'mc' ? 'Multiple Choice (Auto-Scoring)' : currentQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'}
+                      Typ: {previewQ.type === 'mc' ? 'Multiple Choice' : previewQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'} | {previewQ.points} Punkte
                     </span>
-                    <p className="text-xl font-semibold text-white">{currentQ.text}</p>
+                    <p className="text-xl font-semibold text-white">{previewQ.text}</p>
+
+                    {previewQ.type === 'mc' && (
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                        {previewQ.options.map((o, idx) => (
+                          <div key={idx} className={`p-2 rounded border ${idx === previewQ.correctOption ? 'border-emerald-500 bg-emerald-950/30 text-emerald-300' : 'border-slate-800 bg-slate-950 text-slate-400'}`}>
+                            <strong>{['A','B','C','D'][idx]}:</strong> {o} {idx === previewQ.correctOption && '✓'}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     
-                    {currentQ.type === 'freetext' && currentQ.correctText && (
-                      <p className="text-xs text-emerald-400 mt-2 font-mono">Richtige Musterantwort: {currentQ.correctText}</p>
+                    {previewQ.type === 'freetext' && previewQ.correctText && (
+                      <p className="text-xs text-emerald-400 mt-2 font-mono">Richtige Musterantwort: {previewQ.correctText}</p>
                     )}
                   </div>
 
-                  {currentQ.type === 'buzzer' && (
-                    <div className="p-4 bg-amber-500/20 border border-amber-500/50 rounded-xl space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-amber-300">
-                          {roomData?.buzzedPlayer ? `🔔 Gebuzzert von: ${roomData.buzzedPlayer}` : 'Warte auf Buzzer...'}
-                        </span>
-                        {roomData?.buzzedPlayer && (
-                          <button onClick={resetBuzzerOnly} className="text-xs underline text-amber-200 flex items-center gap-1">
-                            <RotateCcw className="w-3 h-3"/> Buzzer zurücksetzen
-                          </button>
-                        )}
-                      </div>
+                  {/* BUTTON ZUM FREIGEBEN DER FRAGE */}
+                  {!isPreviewLive ? (
+                    <button
+                      onClick={() => releaseQuestionToLive(hostPreviewIndex)}
+                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+                    >
+                      <Radio className="w-5 h-5" /> Diese Frage jetzt für ALLE FREIGEBEN & LIVE SCHALTEN
+                    </button>
+                  ) : (
+                    <div className="space-y-3 pt-2">
+                      {liveQ?.type === 'buzzer' && (
+                        <div className="p-4 bg-amber-500/20 border border-amber-500/50 rounded-xl space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-amber-300">
+                              {roomData?.buzzedPlayer ? `🔔 Gebuzzert von: ${roomData.buzzedPlayer}` : 'Warte auf Buzzer...'}
+                            </span>
+                            {roomData?.buzzedPlayer && (
+                              <button onClick={resetBuzzerOnly} className="text-xs underline text-amber-200 flex items-center gap-1">
+                                <RotateCcw className="w-3 h-3"/> Buzzer zurücksetzen
+                              </button>
+                            )}
+                          </div>
 
-                      {roomData?.buzzedPlayer && (
-                        <div className="flex gap-2 pt-1">
-                          <button onClick={() => handleEvaluateBuzzer(true)} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
-                            <Check className="w-5 h-5"/> Richtig (+{currentQ.points} Pkt.)
-                          </button>
-                          <button onClick={() => handleEvaluateBuzzer(false)} className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
-                            <X className="w-5 h-5"/> Falsch (-{Math.round(currentQ.points / 2)} Pkt.)
-                          </button>
+                          {roomData?.buzzedPlayer && (
+                            <div className="flex gap-2 pt-1">
+                              <button onClick={() => handleEvaluateBuzzer(true)} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                                <Check className="w-5 h-5"/> Richtig (+{liveQ.points} Pkt.)
+                              </button>
+                              <button onClick={() => handleEvaluateBuzzer(false)} className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
+                                <X className="w-5 h-5"/> Falsch (-{Math.round(liveQ.points / 2)} Pkt.)
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
+
+                      <div className="flex flex-wrap gap-3">
+                        <button onClick={toggleReveal} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition">
+                          {roomData?.revealedAnswer ? 'Antwort verbergen' : 'Antwort auflösen (Auto-Punkte)'}
+                        </button>
+                      </div>
                     </div>
                   )}
-
-                  <div className="flex flex-wrap gap-3">
-                    <button onClick={toggleReveal} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition">
-                      {roomData?.revealedAnswer ? 'Antwort verbergen' : 'Antwort auflösen (Auto-Punkte)'}
-                    </button>
-                  </div>
                 </div>
               ) : (
-                <p className="text-slate-500 text-sm">Keine Frage aktiv. Wähle unten eine Frage aus und klicke auf "Aktivieren & Freischalten".</p>
+                <p className="text-slate-500 text-sm">Keine Frage vorhanden. Erstelle unten deine erste Frage.</p>
               )}
             </div>
 
+            {/* Frage Anlegen */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
               <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><Plus className="w-5 h-5"/> Neue Frage erstellen</h2>
               <form onSubmit={addQuestion} className="space-y-4">
@@ -686,18 +726,19 @@ export default function App() {
               </form>
             </div>
 
+            {/* Fragenliste */}
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
               <h3 className="text-sm font-bold text-slate-400 mb-3">Erstellte Fragen ({currentQuestions.length})</h3>
               <div className="space-y-2">
                 {currentQuestions.map((q, idx) => (
-                  <div key={q.id} className={`p-3 rounded-xl border flex items-center justify-between ${idx === currentQIndex ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
+                  <div key={q.id} className={`p-3 rounded-xl border flex items-center justify-between ${idx === liveQIndex ? 'bg-emerald-950/30 border-emerald-500' : idx === hostPreviewIndex ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
                     <div>
                       <p className="text-sm text-white truncate">{idx + 1}. {q.text}</p>
-                      <span className="text-xs text-slate-500">[{q.type === 'mc' ? 'Multiple Choice' : q.type === 'buzzer' ? 'Buzzer' : 'Freitext'}]</span>
+                      <span className="text-xs text-slate-500">[{q.type === 'mc' ? 'Multiple Choice' : q.type === 'buzzer' ? 'Buzzer' : 'Freitext'}] {idx === liveQIndex && '• [LIVE AKTIV]'}</span>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => setQuestionIndex(idx)} className="px-3 py-1 bg-indigo-600 text-white text-xs rounded-lg font-semibold hover:bg-indigo-500">
-                        Aktivieren & Freischalten
+                      <button onClick={() => setHostPreviewIndex(idx)} className="px-3 py-1 bg-indigo-600 text-white text-xs rounded-lg font-semibold hover:bg-indigo-500">
+                        Ansehen / Vorschau
                       </button>
                       <button onClick={() => deleteQuestion(q.id)} className="p-1 text-slate-500 hover:text-rose-400"><Trash2 className="w-4 h-4"/></button>
                     </div>
@@ -717,7 +758,7 @@ export default function App() {
                   <div key={p.name} className={`p-3 rounded-xl border transition ${p.selected ? 'bg-indigo-950/40 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        {currentQ?.type === 'freetext' && (
+                        {liveQ?.type === 'freetext' && (
                           <button onClick={() => togglePlayerSelect(p.name)} className="text-indigo-400">
                             {p.selected ? <CheckSquare className="w-5 h-5 text-indigo-400"/> : <Square className="w-5 h-5 text-slate-600"/>}
                           </button>
@@ -728,7 +769,7 @@ export default function App() {
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        <button onClick={() => handleAwardPoints(p.name, currentQ ? currentQ.points : 100)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{currentQ ? currentQ.points : 100}</button>
+                        <button onClick={() => handleAwardPoints(p.name, liveQ ? liveQ.points : 100)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{liveQ ? liveQ.points : 100}</button>
                         <button onClick={() => handleAwardPoints(p.name, -50)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-50</button>
                       </div>
                     </div>
@@ -738,10 +779,10 @@ export default function App() {
                         <div>
                           <span className="text-slate-500 block">Antwort:</span>
                           <span className="text-emerald-300 font-medium">
-                            {currentQ?.type === 'mc' ? `Option ${['A','B','C','D'][p.answer]}` : p.answer}
+                            {liveQ?.type === 'mc' ? `Option ${['A','B','C','D'][p.answer]}` : p.answer}
                           </span>
                         </div>
-                        {currentQ?.type === 'freetext' && (
+                        {liveQ?.type === 'freetext' && (
                           <button 
                             onClick={() => togglePlayerReveal(p.name)} 
                             className={`px-2 py-1 rounded text-xs flex items-center gap-1 font-semibold ${isRevealed ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
@@ -790,14 +831,14 @@ export default function App() {
         </div>
 
         <div className="my-auto space-y-6 text-center">
-          {currentQ ? (
+          {liveQ ? (
             <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 space-y-4">
               <span className="text-xs text-indigo-400 font-semibold uppercase">Aktuelle Frage</span>
-              <p className="text-xl font-bold">{currentQ.text}</p>
+              <p className="text-xl font-bold">{liveQ.text}</p>
 
-              {currentQ.type === 'mc' && (
+              {liveQ.type === 'mc' && (
                 <div className="grid grid-cols-1 gap-2 pt-2">
-                  {currentQ.options.map((opt, idx) => (
+                  {liveQ.options.map((opt, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleSubmitAnswer(idx)}
@@ -813,7 +854,7 @@ export default function App() {
                 </div>
               )}
 
-              {currentQ.type === 'freetext' && (
+              {liveQ.type === 'freetext' && (
                 <div className="pt-2 space-y-3">
                   {!hasAnswered ? (
                     <>
@@ -858,10 +899,10 @@ export default function App() {
               )}
             </div>
           ) : (
-            <p className="text-slate-500">Warte auf die Aktivierung der nächsten Frage durch den Moderator...</p>
+            <p className="text-slate-500">Warte auf die Freigabe der nächsten Frage durch den Moderator...</p>
           )}
 
-          {currentQ?.type === 'buzzer' && (
+          {liveQ?.type === 'buzzer' && (
             <button
               onClick={handleBuzzer}
               disabled={!!roomData?.buzzedPlayer || roomData?.buzzerLocked}
@@ -901,18 +942,18 @@ export default function App() {
       </div>
 
       <div className="my-auto max-w-4xl mx-auto text-center space-y-8">
-        {currentQ ? (
+        {liveQ ? (
           <div className="space-y-6">
             <span className="inline-block px-4 py-1 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-full text-sm font-semibold">
-              {currentQ.points} Punkte
+              {liveQ.points} Punkte
             </span>
-            <h2 className="text-4xl font-extrabold">{currentQ.text}</h2>
+            <h2 className="text-4xl font-extrabold">{liveQ.text}</h2>
 
-            {currentQ.type === 'mc' && (
+            {liveQ.type === 'mc' && (
               <div className="grid grid-cols-2 gap-4 pt-4">
-                {currentQ.options.map((opt, idx) => {
+                {liveQ.options.map((opt, idx) => {
                   const playersWhoChoseThis = playerList.filter(p => p.answer === idx);
-                  const isCorrect = roomData?.revealedAnswer && idx === currentQ.correctOption;
+                  const isCorrect = roomData?.revealedAnswer && idx === liveQ.correctOption;
 
                   return (
                     <div
@@ -942,13 +983,13 @@ export default function App() {
               </div>
             )}
 
-            {currentQ.type === 'freetext' && roomData?.revealedAnswer && (
+            {liveQ.type === 'freetext' && roomData?.revealedAnswer && (
               <div className="p-6 bg-emerald-600/20 border-2 border-emerald-500 rounded-2xl text-emerald-200 text-2xl font-bold inline-block">
-                Musterantwort: {currentQ.correctText || 'Keine Angabe'}
+                Musterantwort: {liveQ.correctText || 'Keine Angabe'}
               </div>
             )}
 
-            {currentQ.type === 'freetext' && (
+            {liveQ.type === 'freetext' && (
               <div className="grid grid-cols-2 gap-4 pt-4">
                 {playerList.filter(p => roomData?.revealedPlayers?.[p.name]).map(p => (
                   <div key={p.name} className="p-4 bg-slate-900 border-2 border-indigo-500 rounded-xl text-left">
@@ -960,10 +1001,10 @@ export default function App() {
             )}
           </div>
         ) : (
-          <p className="text-slate-600 text-xl font-bold">Warte auf die Aktivierung der nächsten Frage...</p>
+          <p className="text-slate-600 text-xl font-bold">Warte auf die Freigabe der nächsten Frage...</p>
         )}
 
-        {currentQ?.type === 'buzzer' && roomData?.buzzedPlayer && (
+        {liveQ?.type === 'buzzer' && roomData?.buzzedPlayer && (
           <div className="p-6 bg-amber-500/20 border-2 border-amber-500 rounded-2xl text-amber-300 text-2xl font-black animate-bounce inline-block">
             🔔 {roomData.buzzedPlayer} HAT GEBUZZERT!
           </div>
