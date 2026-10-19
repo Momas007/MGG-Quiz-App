@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
-  Play, Plus, Trash2, CheckCircle2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Award, Sparkles, LogOut, KeyRound, User
+  Play, Plus, Trash2, Volume2, VolumeX, 
+  Tv, UserCheck, Shield, Sparkles, LogOut, KeyRound, User
 } from 'lucide-react';
 
 export default function App() {
@@ -11,13 +11,12 @@ export default function App() {
   const [inputCode, setInputCode] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Quiz-Zustand
+  // Quiz State
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
   const [players, setPlayers] = useState([]);
   const [buzzedPlayer, setBuzzedPlayer] = useState(null);
   const [revealedAnswer, setRevealedAnswer] = useState(false);
-  const [playerAnswerInput, setPlayerAnswerInput] = useState('');
 
   // Audio Synth
   const playSound = (type) => {
@@ -47,7 +46,7 @@ export default function App() {
         osc.stop(ctx.currentTime + 0.3);
       }
     } catch (e) {
-      console.log('Audio Context Fehler', e);
+      console.log('Audio Error', e);
     }
   };
 
@@ -76,7 +75,6 @@ export default function App() {
     setRoomCode(cleanCode);
     setRole('player');
     
-    // Spieler hinzufügen
     setPlayers(prev => {
       if (prev.some(p => p.name === playerName)) return prev;
       return [...prev, { name: playerName, score: 0, answer: null }];
@@ -90,38 +88,7 @@ export default function App() {
     setRole('tv');
   };
 
-  // Fragen-Verwaltung für den Moderator
+  // Fragen-Formular State
   const [newQuestionText, setNewQuestionText] = useState('');
-  const [newQuestionType, setNewQuestionType] = useState('mc'); // 'mc' oder 'text'
-  const [newOptions, setNewOptions] = useState(['', '', '', '']);
-  const [newCorrectOption, setNewCorrectOption] = useState(0);
-  const [newPoints, setNewPoints] = useState(100);
-
-  const addQuestion = (e) => {
-    e.preventDefault();
-    if (!newQuestionText.trim()) return;
-
-    const newQ = {
-      id: Date.now(),
-      text: newQuestionText,
-      type: newQuestionType,
-      options: newQuestionType === 'mc' ? [...newOptions] : [],
-      correctOption: newQuestionType === 'mc' ? newCorrectOption : null,
-      points: Number(newPoints) || 100
-    };
-
-    setQuestions([...questions, newQ]);
-    setNewQuestionText('');
-    setNewOptions(['', '', '', '']);
-  };
-
-  const deleteQuestion = (id) => {
-    setQuestions(questions.filter(q => q.id !== id));
-  };
-
-  // Buzzer Action
-  const handleBuzzer = () => {
-    if (buzzedPlayer) return;
-    setBuzzedPlayer(playerName);
-    playSound('buzzer');
-  };
+  const [newQuestionType, setNewQuestionType] = useState('mc');
+  const
