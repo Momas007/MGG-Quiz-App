@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, onValue, set, update, get, child, remove, push } from 'firebase/database';
+import { getDatabase, ref, onValue, set, update, get, child, remove } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
   Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight, Radio, FolderPlus, BookOpen, Layers
@@ -566,7 +566,8 @@ export default function App() {
   // --- EIGENER KOLLEKTIONS-ERSTELLER MODUS ---
   if (role === 'collection_creator') {
     const handleSaveCollectionToDB = async () => {
-      if (!collHeader.trim()) {
+      const cleanHeader = collHeader.trim();
+      if (!cleanHeader) {
         alert('Bitte gib zuerst einen Header-Namen für die Kollektion ein.');
         return;
       }
@@ -576,14 +577,16 @@ export default function App() {
       }
 
       try {
-        const newCollectionRef = push(ref(db, 'collections'));
-        await set(newCollectionRef, {
-          header: collHeader.trim(),
+        // Firebase-Schlüssel bereinigen, falls ungültige Zeichen im Header sind (z.B. '.', '#', '\$', '[', ']')
+        const safeKey = cleanHeader.replace(/[.#\$[\]]/g, '_');
+
+        await set(ref(db, `collections/${safeKey}`), {
+          header: cleanHeader,
           createdAt: Date.now(),
           questions: collQuestions
         });
 
-        alert('Kollektion erfolgreich in der Datenbank gespeichert!');
+        alert('Kollektion erfolgreich in der Datenbank unter dem Namen "' + cleanHeader + '" gespeichert!');
         setRole(null);
       } catch (err) {
         console.error("Fehler beim Speichern der Kollektion:", err);
@@ -747,7 +750,7 @@ export default function App() {
               onClick={handleSaveCollectionToDB}
               className="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2"
             >
-              <Check className="w-5 h-5"/> Kollektion fertigstellen & in Firebase speichern
+              <Check className="w-5 h-5"/> Kollektion unter Header-Namen speichern
             </button>
           </div>
         )}
