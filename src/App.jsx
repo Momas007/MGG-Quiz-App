@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, get, child } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Sparkles, LogOut, KeyRound, User, AlertCircle, Send
+  Tv, UserCheck, Shield, Sparkles, LogOut, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award
 } from 'lucide-react';
 
 // Firebase Konfiguration
@@ -85,7 +85,7 @@ export default function App() {
     return code;
   };
 
-  // Raum Erstellen (Als Moderator)
+  // Raum Erstellen
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     if (!playerName.trim()) return;
@@ -99,7 +99,8 @@ export default function App() {
         questions: [],
         players: {},
         buzzedPlayer: null,
-        revealedAnswer: false
+        revealedAnswer: false,
+        revealedPlayers: {}
       });
 
       setRoomCode(newCode);
@@ -126,7 +127,8 @@ export default function App() {
     await update(ref(db, `rooms/${cleanCode}/players/${playerName}`), {
       name: playerName,
       score: 0,
-      answer: null
+      answer: null,
+      selected: false
     });
 
     setRoomCode(cleanCode);
@@ -154,6 +156,7 @@ export default function App() {
   const [newQuestionType, setNewQuestionType] = useState('mc'); // 'mc' | 'buzzer' | 'freetext'
   const [newOptions, setNewOptions] = useState(['', '', '', '']);
   const [newCorrectOption, setNewCorrectOption] = useState(0);
+  const [newCorrectText, setNewCorrectText] = useState('');
   const [newPoints, setNewPoints] = useState(100);
 
   const addQuestion = async (e) => {
@@ -167,6 +170,7 @@ export default function App() {
       type: newQuestionType,
       options: newQuestionType === 'mc' ? [...newOptions] : [],
       correctOption: newQuestionType === 'mc' ? newCorrectOption : null,
+      correctText: newQuestionType === 'freetext' ? newCorrectText : '',
       points: Number(newPoints) || 100
     };
 
@@ -178,19 +182,21 @@ export default function App() {
 
     setNewQuestionText('');
     setNewOptions(['', '', '', '']);
+    setNewCorrectText('');
   };
 
   const setQuestionIndex = async (idx) => {
-    // Antworten der Spieler zurücksetzen beim Fragenwechsel
     const resetPlayers = { ...roomData?.players };
     Object.keys(resetPlayers).forEach(pKey => {
       resetPlayers[pKey].answer = null;
+      resetPlayers[pKey].selected = false;
     });
 
     await update(ref(db, `rooms/${roomCode}`), {
       currentQuestionIndex: idx,
       buzzedPlayer: null,
       revealedAnswer: false,
+      revealedPlayers: {},
       players: resetPlayers
     });
   };
@@ -219,6 +225,18 @@ export default function App() {
     });
   };
 
+  const togglePlayerSelect = async (pName) => {
+    const currentVal = roomData?.players?.[pName]?.selected || false;
+    await update(ref(db, `rooms/${roomCode}/players/${pName}`), {
+      selected: !currentVal
+    });
+  };
+
+  const togglePlayerReveal = async (pName) => {
+    const currentRev = roomData?.revealedPlayers?.[pName] || false;
+    await update(ref(db, `rooms/${roomCode}/revealedPlayers/${pName}`), !currentRev);
+  };
+
   const handleAwardPoints = async (pName, pts) => {
     if (!roomData?.players?.[pName]) return;
     playSound('correct');
@@ -226,6 +244,23 @@ export default function App() {
     await update(ref(db, `rooms/${roomCode}/players/${pName}`), {
       score: currentScore + pts
     });
+  };
+
+  const awardPointsToSelected = async () => {
+    if (!roomData?.players) return;
+    const pts = roomData?.questions?.[roomData?.currentQuestionIndex]?.points || 100;
+    const updates = {};
+    
+    Object.values(roomData.players).forEach(p => {
+      if (p.selected) {
+        updates[`rooms/${roomCode}/players/${p.name}/score`] = (p.score || 0) + pts;
+      }
+    });
+
+    if (Object.keys(updates).length > 0) {
+      playSound('correct');
+      await update(ref(db), updates);
+    }
   };
 
   const resetBuzzer = async () => {
@@ -369,26 +404,24 @@ export default function App() {
                       Typ: {currentQ.type === 'mc' ? 'Multiple Choice' : currentQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'}
                     </span>
                     <p className="text-xl font-semibold text-white">{currentQ.text}</p>
-                    {currentQ.type === 'mc' && (
-                      <div className="grid grid-cols-2 gap-2 mt-3">
-                        {currentQ.options.map((opt, idx) => (
-                          <div key={idx} className={`p-2 rounded border text-xs ${idx === currentQ.correctOption ? 'border-emerald-500 text-emerald-300' : 'border-slate-700 text-slate-400'}`}>
-                            <strong>{['A','B','C','D'][idx]}:</strong> {opt}
-                          </div>
-                        ))}
-                      </div>
+                    
+                    {currentQ.type === 'freetext' && currentQ.correctText && (
+                      <p className="text-xs text-emerald-400 mt-2 font-mono">Richtige Musterantwort: {currentQ.correctText}</p>
                     )}
                   </div>
 
                   <div className="flex flex-wrap gap-3">
                     <button onClick={toggleReveal} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition">
-                      {roomData?.revealedAnswer ? 'Antwort verbergen' : 'Antwort auflösen'}
+                      {roomData?.revealedAnswer ? 'Musterantwort verbergen' : 'Musterantwort auflösen'}
                     </button>
                     {currentQ.type === 'buzzer' && (
                       <button onClick={resetBuzzer} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-medium transition">
                         Buzzer zurücksetzen
                       </button>
                     )}
+                    <button onClick={awardPointsToSelected} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition">
+                      <Award className="w-4 h-4"/> Punkte an angehakte Spieler vergeben (+{currentQ.points})
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -425,6 +458,19 @@ export default function App() {
                     placeholder="Punkte"
                   />
                 </div>
+
+                {newQuestionType === 'freetext' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Musterantwort / Richtige Lösung</label>
+                    <input
+                      type="text"
+                      placeholder="z. B. Wien"
+                      value={newCorrectText}
+                      onChange={(e) => setNewCorrectText(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
+                    />
+                  </div>
+                )}
 
                 {newQuestionType === 'mc' && (
                   <div className="space-y-2">
@@ -479,7 +525,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Spieler Liste & Antworten */}
+          {/* Spieler Liste & Antworten & Auswählen */}
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
             <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><UserCheck className="w-5 h-5"/> Spieler Live ({playerList.length})</h2>
             
@@ -491,30 +537,45 @@ export default function App() {
             )}
 
             <div className="space-y-3">
-              {playerList.map(p => (
-                <div key={p.name} className="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-semibold text-white text-sm">{p.name}</p>
-                      <p className="text-xs text-indigo-400">{p.score} Punkte</p>
+              {playerList.map(p => {
+                const isRevealed = roomData?.revealedPlayers?.[p.name];
+                return (
+                  <div key={p.name} className={`p-3 rounded-xl border transition ${p.selected ? 'bg-indigo-950/40 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => togglePlayerSelect(p.name)} className="text-indigo-400">
+                          {p.selected ? <CheckSquare className="w-5 h-5 text-indigo-400"/> : <Square className="w-5 h-5 text-slate-600"/>}
+                        </button>
+                        <div>
+                          <p className="font-semibold text-white text-sm">{p.name}</p>
+                          <p className="text-xs text-indigo-400">{p.score} Punkte</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => handleAwardPoints(p.name, currentQ ? currentQ.points : 100)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{currentQ ? currentQ.points : 100}</button>
+                        <button onClick={() => handleAwardPoints(p.name, -50)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-50</button>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => handleAwardPoints(p.name, currentQ ? currentQ.points : 100)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{currentQ ? currentQ.points : 100}</button>
-                      <button onClick={() => handleAwardPoints(p.name, -50)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-50</button>
-                    </div>
-                  </div>
 
-                  {/* Eingereichte Antwort des Spielers anzeigen */}
-                  {p.answer !== null && p.answer !== undefined && (
-                    <div className="pt-2 border-t border-slate-800 text-xs">
-                      <span className="text-slate-500 block">Eingereicht:</span>
-                      <span className="text-emerald-300 font-medium">
-                        {currentQ?.type === 'mc' ? `Option ${['A','B','C','D'][p.answer]}` : p.answer}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    {/* Freitext Antwort des Spielers inkl. Enthalten/Verbergen Button */}
+                    {p.answer !== null && p.answer !== undefined && (
+                      <div className="pt-2 mt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="text-slate-500 block">Antwort:</span>
+                          <span className="text-emerald-300 font-medium">{p.answer}</span>
+                        </div>
+                        <button 
+                          onClick={() => togglePlayerReveal(p.name)} 
+                          className={`px-2 py-1 rounded text-xs flex items-center gap-1 font-semibold ${isRevealed ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                        >
+                          {isRevealed ? <EyeOff className="w-3 h-3"/> : <Eye className="w-3 h-3"/>}
+                          {isRevealed ? 'Auf TV zeigen [Aktiv]' : 'Auf TV zeigen'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -546,7 +607,6 @@ export default function App() {
               <span className="text-xs text-indigo-400 font-semibold uppercase">Aktuelle Frage</span>
               <p className="text-xl font-bold">{currentQ.text}</p>
 
-              {/* 1. MULTIPLE CHOICE ANTWORTEN */}
               {currentQ.type === 'mc' && (
                 <div className="grid grid-cols-1 gap-2 pt-2">
                   {currentQ.options.map((opt, idx) => (
@@ -565,7 +625,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* 2. FREITEXT ANTWORT EINGABE */}
               {currentQ.type === 'freetext' && (
                 <div className="pt-2 space-y-3">
                   <input
@@ -592,7 +651,6 @@ export default function App() {
             <p className="text-slate-500">Warte auf die nächste Frage vom Moderator...</p>
           )}
 
-          {/* 3. BUZZER BUTTON (NUR BEI BUZZER-FRAGEN) */}
           {currentQ?.type === 'buzzer' && (
             <button
               onClick={handleBuzzer}
@@ -649,13 +707,20 @@ export default function App() {
               </div>
             )}
 
-            {/* Freitext-Antworten auf dem TV anzeigen, wenn aufgelöst */}
+            {/* Freitext Musterantwort auflösen */}
             {currentQ.type === 'freetext' && roomData?.revealedAnswer && (
+              <div className="p-6 bg-emerald-600/20 border-2 border-emerald-500 rounded-2xl text-emerald-200 text-2xl font-bold inline-block">
+                Musterantwort: {currentQ.correctText || 'Keine Angabe'}
+              </div>
+            )}
+
+            {/* Einzelne freigeschaltete Spieler-Antworten anzeigen */}
+            {currentQ.type === 'freetext' && (
               <div className="grid grid-cols-2 gap-4 pt-4">
-                {playerList.map(p => (
-                  <div key={p.name} className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-left">
-                    <span className="text-xs text-slate-500 block">{p.name}:</span>
-                    <span className="text-lg font-semibold text-emerald-300">{p.answer || 'Keine Antwort'}</span>
+                {playerList.filter(p => roomData?.revealedPlayers?.[p.name]).map(p => (
+                  <div key={p.name} className="p-4 bg-slate-900 border-2 border-indigo-500 rounded-xl text-left animate-fade-in">
+                    <span className="text-xs text-indigo-400 font-bold block">{p.name}:</span>
+                    <span className="text-xl font-semibold text-white">{p.answer || 'Keine Antwort'}</span>
                   </div>
                 ))}
               </div>
@@ -674,7 +739,7 @@ export default function App() {
 
       <div className="grid grid-cols-4 gap-4">
         {playerList.map(p => (
-          <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+          <div key={p.name} className={`p-4 rounded-xl border text-center transition ${p.selected ? 'bg-indigo-950/60 border-indigo-500' : 'bg-slate-900 border-slate-800'}`}>
             <p className="text-xs text-slate-400 truncate">{p.name}</p>
             <p className="text-xl font-black text-indigo-400">{p.score} Pkt.</p>
           </div>
