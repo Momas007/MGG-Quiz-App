@@ -33,19 +33,18 @@ export default function App() {
   // Kollektion Erstellungs State
   const [collHeader, setCollHeader] = useState('');
   const [collCount, setCollCount] = useState(3);
-  const [collCreatorStep, setCollCreatorStep] = useState(0); // 0: Setup, 1: Fragen eingeben
+  const [collCreatorStep, setCollCreatorStep] = useState(0); // 0: Setup, 1: Fragen bearbeiten
   const [collQuestions, setCollQuestions] = useState([]);
-  const [currentCollQIndex, setCurrentCollQIndex] = useState(0);
   const [publicCollections, setPublicCollections] = useState({});
   const [selectedCollectionKey, setSelectedCollectionKey] = useState('');
 
-  // Aktuelle Frage beim Erstellen einer temporären Frage im Kollektions-Wizard
-  const [tempQText, setTempQText] = useState('');
-  const [tempQType, setTempQType] = useState('mc');
-  const [tempQOptions, setTempQOptions] = useState(['', '', '', '']);
-  const [tempQCorrectOpt, setTempQCorrectOpt] = useState(0);
-  const [tempQCorrectText, setTempQCorrectText] = useState('');
-  const [tempQPoints, setTempQPoints] = useState(100);
+  // Eingabefelder für eine neue Frage im Kollektions-Modus
+  const [newCollQText, setNewCollQText] = useState('');
+  const [newCollQType, setNewCollQType] = useState('mc');
+  const [newCollQOptions, setNewCollQOptions] = useState(['', '', '', '']);
+  const [newCollQCorrectOpt, setNewCollQCorrectOpt] = useState(0);
+  const [newCollQCorrectText, setNewCollQCorrectText] = useState('');
+  const [newCollQPoints, setNewCollQPoints] = useState(100);
 
   // Lokaler Moderator Preview Index
   const [hostPreviewIndex, setHostPreviewIndex] = useState(0);
@@ -142,13 +141,12 @@ export default function App() {
     return code;
   };
 
-  // Raum Erstellen (Als Moderator) - Berücksichtigt ausgewählte Kollektion oder Reset auf leer
+  // Raum Erstellen (Als Moderator)
   const handleCreateRoom = async (e) => {
     if (e) e.preventDefault();
     if (!playerName.trim()) return;
     const newCode = generateCode();
     
-    // Fragen aus der ausgewählten Kollektion laden (falls vorhanden)
     let loadedQuestions = [];
     if (selectedCollectionKey && publicCollections[selectedCollectionKey]) {
       loadedQuestions = publicCollections[selectedCollectionKey].questions || [];
@@ -177,7 +175,7 @@ export default function App() {
     }
   };
 
-  // Raum Beitreten / Hot-Join (Spieler & Moderator)
+  // Raum Beitreten / Hot-Join
   const handleJoinRoom = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -193,7 +191,6 @@ export default function App() {
 
     const data = snapshot.val();
 
-    // 1. MODERATOR HOT-JOIN
     if (data.host && data.host.toLowerCase() === cleanName.toLowerCase()) {
       setRoomCode(cleanCode);
       setRole('host');
@@ -201,7 +198,6 @@ export default function App() {
       return;
     }
 
-    // 2. SPIELER HOT-JOIN
     const existingPlayers = data.players || {};
     const existingPlayerKey = Object.keys(existingPlayers).find(
       key => key.toLowerCase() === cleanName.toLowerCase()
@@ -442,7 +438,7 @@ export default function App() {
     await update(ref(db), updates);
   };
 
-  // --- HOME / LOGIN & KOLLEKTIONS-CREATOR SCREEN ---
+  // --- HOME / LOGIN SCREEN ---
   if (!role) {
     return (
       <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
@@ -461,167 +457,7 @@ export default function App() {
             </div>
           )}
 
-          {role === 'collection_creator' ? (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center pb-3 border-b border-slate-700">
-                <h3 className="text-sm font-bold text-indigo-400">Fragen-Kollektion erstellen</h3>
-                <span className="text-xs text-slate-400">Frage {currentCollQIndex + 1} von {collCount}</span>
-              </div>
-
-              {collCreatorStep === 0 ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Header-Name der Kollektion</label>
-                    <input
-                      type="text"
-                      placeholder="z. B. Geografie Quiz Deluxe"
-                      value={collHeader}
-                      onChange={(e) => setCollHeader(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Anzahl der Fragen</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={50}
-                      value={collCount}
-                      onChange={(e) => setCollCount(Math.max(1, Number(e.target.value)))}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white"
-                    />
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (!collHeader.trim()) return;
-                      setCollCreatorStep(1);
-                      setCurrentCollQIndex(0);
-                      setCollQuestions([]);
-                    }}
-                    disabled={!collHeader.trim()}
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl transition"
-                  >
-                    Weiter zur Fragen-Eingabe
-                  </button>
-                  <button onClick={() => setRole(null)} className="w-full text-xs text-slate-400 hover:text-white py-2">
-                    Abbrechen
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Fragetext</label>
-                    <input
-                      type="text"
-                      placeholder="Fragetext eingeben..."
-                      value={tempQText}
-                      onChange={(e) => setTempQText(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <select
-                      value={tempQType}
-                      onChange={(e) => setTempQType(e.target.value)}
-                      className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white"
-                    >
-                      <option value="mc">Multiple Choice</option>
-                      <option value="buzzer">Buzzer</option>
-                      <option value="freetext">Freitext</option>
-                    </select>
-                    <input
-                      type="number"
-                      placeholder="Punkte"
-                      value={tempQPoints}
-                      onChange={(e) => setTempQPoints(Number(e.target.value))}
-                      className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white"
-                    />
-                  </div>
-
-                  {tempQType === 'mc' && (
-                    <div className="space-y-2">
-                      {tempQOptions.map((opt, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-500">{['A','B','C','D'][idx]}</span>
-                          <input
-                            type="text"
-                            placeholder={`Option ${['A','B','C','D'][idx]}`}
-                            value={opt}
-                            onChange={(e) => {
-                              const updated = [...tempQOptions];
-                              updated[idx] = e.target.value;
-                              setTempQOptions(updated);
-                            }}
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
-                          />
-                          <input
-                            type="radio"
-                            name="tempCorrect"
-                            checked={tempQCorrectOpt === idx}
-                            onChange={() => setTempQCorrectOpt(idx)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {tempQType === 'freetext' && (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Musterantwort</label>
-                      <input
-                        type="text"
-                        placeholder="Richtige Antwort"
-                        value={tempQCorrectText}
-                        onChange={(e) => setTempQCorrectText(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-                      />
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => {
-                      if (!tempQText.trim()) return;
-                      const newQ = {
-                        id: Date.now() + currentCollQIndex,
-                        text: tempQText,
-                        type: tempQType,
-                        options: tempQType === 'mc' ? [...tempQOptions] : [],
-                        correctOption: tempQType === 'mc' ? tempQCorrectOpt : null,
-                        correctText: tempQType === 'freetext' ? tempQCorrectText : '',
-                        points: tempQPoints
-                      };
-
-                      const updatedQuestions = [...collQuestions, newQ];
-                      setCollQuestions(updatedQuestions);
-
-                      // Reset temp inputs
-                      setTempQText('');
-                      setTempQOptions(['', '', '', '']);
-                      setTempQCorrectText('');
-
-                      if (currentCollQIndex + 1 < collCount) {
-                        setCurrentCollQIndex(currentCollQIndex + 1);
-                      } else {
-                        // In Firebase speichern
-                        push(ref(db, 'collections'), {
-                          header: collHeader,
-                          createdAt: Date.now(),
-                          questions: updatedQuestions
-                        });
-                        setRole(null);
-                        setCollCreatorStep(0);
-                        alert('Kollektion erfolgreich erstellt und gespeichert!');
-                      }
-                    }}
-                    disabled={!tempQText.trim()}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl transition text-sm"
-                  >
-                    {currentCollQIndex + 1 < collCount ? 'Nächste Frage' : 'Kollektion Fertigstellen & Speichern'}
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
+          {role === 'collection_creator' ? null : (
             <div className="space-y-6">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Dein Name</label>
@@ -674,7 +510,7 @@ export default function App() {
                       setRole('collection_creator');
                       setCollCreatorStep(0);
                       setCollHeader('');
-                      setCollCount(3);
+                      setCollQuestions([]);
                     }}
                     className="text-xs text-indigo-400 hover:underline flex items-center justify-center gap-1 mx-auto font-medium"
                   >
@@ -728,6 +564,189 @@ export default function App() {
             </div>
           )}
         </div>
+      </div>
+    );
+  }
+
+  // --- EIGENER KOLLEKTIONS-ERSTELLER MODUS ---
+  if (role === 'collection_creator') {
+    return (
+      <div className="min-h-screen bg-slate-900 text-slate-100 p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex justify-between items-center pb-6 border-b border-slate-800">
+          <div>
+            <span className="text-xs text-indigo-400 font-semibold uppercase">Kollektions-Manager</span>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <FolderPlus className="w-6 h-6 text-indigo-400" /> Neue Fragen-Kollektion erstellen
+            </h1>
+          </div>
+          <button 
+            onClick={() => setRole(null)}
+            className="px-4 py-2 bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-700"
+          >
+            Abbrechen / Zurück
+          </button>
+        </div>
+
+        {/* Header Name eingeben */}
+        <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-4">
+          <h2 className="text-lg font-bold text-indigo-400">1. Header-Name der Kollektion</h2>
+          <input
+            type="text"
+            placeholder="z. B. Allgemeine Wissensfragen Staffel 1"
+            value={collHeader}
+            onChange={(e) => setCollHeader(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-lg font-semibold"
+          />
+        </div>
+
+        {/* Frage hinzufügen wie im Moderator */}
+        <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-4">
+          <h2 className="text-lg font-bold text-indigo-400">2. Fragen hinzufügen ({collQuestions.length} erstellt)</h2>
+          
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="Fragetext eintippen..."
+              value={newCollQText}
+              onChange={(e) => setNewCollQText(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
+            />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <select
+                value={newCollQType}
+                onChange={(e) => setNewCollQType(e.target.value)}
+                className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
+              >
+                <option value="mc">Multiple Choice (A, B, C, D)</option>
+                <option value="buzzer">Schnell-Buzzer</option>
+                <option value="freetext">Freitext-Antwort</option>
+              </select>
+              <input
+                type="number"
+                value={newCollQPoints}
+                onChange={(e) => setNewCollQPoints(Number(e.target.value))}
+                className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
+                placeholder="Punkte"
+              />
+            </div>
+
+            {newCollQType === 'freetext' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Musterantwort / Richtige Lösung</label>
+                <input
+                  type="text"
+                  placeholder="z. B. Wien"
+                  value={newCollQCorrectText}
+                  onChange={(e) => setNewCollQCorrectText(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm"
+                />
+              </div>
+            )}
+
+            {newCollQType === 'mc' && (
+              <div className="space-y-2">
+                {newCollQOptions.map((opt, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <span className="w-4 font-bold text-slate-500 text-sm">{['A','B','C','D'][idx]}</span>
+                    <input
+                      type="text"
+                      placeholder={`Option ${['A','B','C','D'][idx]}`}
+                      value={opt}
+                      onChange={(e) => {
+                        const updated = [...newCollQOptions];
+                        updated[idx] = e.target.value;
+                        setNewCollQOptions(updated);
+                      }}
+                      className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white"
+                    />
+                    <input
+                      type="radio"
+                      name="collCorrect"
+                      checked={newCollQCorrectOpt === idx}
+                      onChange={() => setNewCollQCorrectOpt(idx)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!newCollQText.trim()) return;
+                const newQ = {
+                  id: Date.now(),
+                  text: newCollQText,
+                  type: newCollQType,
+                  options: newCollQType === 'mc' ? [...newCollQOptions] : [],
+                  correctOption: newCollQType === 'mc' ? newCollQCorrectOpt : null,
+                  correctText: newCollQType === 'freetext' ? newCollQCorrectText : '',
+                  points: Number(newCollQPoints) || 100
+                };
+                setCollQuestions([...collQuestions, newQ]);
+                setNewCollQText('');
+                setNewCollQOptions(['', '', '', '']);
+                setNewCollQCorrectText('');
+              }}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl font-semibold transition text-sm flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4"/> Frage zur Kollektion hinzufügen
+            </button>
+          </div>
+        </div>
+
+        {/* Liste der bisher erstellten Fragen */}
+        {collQuestions.length > 0 && (
+          <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-3">
+            <h3 className="text-sm font-bold text-slate-400">Enthaltene Fragen in dieser Kollektion ({collQuestions.length})</h3>
+            <div className="space-y-2">
+              {collQuestions.map((q, idx) => (
+                <div key={q.id} className="p-3 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-between text-sm">
+                  <div>
+                    <p className="text-white font-medium">{idx + 1}. {q.text}</p>
+                    <span className="text-xs text-slate-500">[{q.type === 'mc' ? 'Multiple Choice' : q.type === 'buzzer' ? 'Buzzer' : 'Freitext'} | {q.points} Pkt.]</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setCollQuestions(collQuestions.filter(item => item.id !== q.id));
+                    }}
+                    className="p-1.5 text-slate-500 hover:text-rose-400 transition"
+                  >
+                    <Trash2 className="w-4 h-4"/>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!collHeader.trim()) {
+                  alert('Bitte gib zuerst einen Header-Namen für die Kollektion ein.');
+                  return;
+                }
+                if (collQuestions.length === 0) {
+                  alert('Bitte füge mindestens eine Frage hinzu.');
+                  return;
+                }
+
+                // In Firebase speichern
+                push(ref(db, 'collections'), {
+                  header: collHeader,
+                  createdAt: Date.now(),
+                  questions: collQuestions
+                });
+
+                alert('Kollektion erfolgreich gespeichert!');
+                setRole(null);
+              }}
+              className="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2"
+            >
+              <Check className="w-5 h-5"/> Kollektion fertigstellen & in Firebase speichern
+            </button>
+          </div>
+        )}
       </div>
     );
   }
