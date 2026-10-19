@@ -3,10 +3,10 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, get, child } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Sparkles, LogOut, KeyRound, User, AlertCircle
+  Tv, UserCheck, Shield, Sparkles, LogOut, KeyRound, User, AlertCircle, Send
 } from 'lucide-react';
 
-// Deine Firebase Konfiguration
+// Firebase Konfiguration
 const firebaseConfig = {
   apiKey: "AIzaSyD-BSbLY3GF0a1C4_VXHFNuSHcHY6mnIFQ",
   authDomain: "mgg-quiz-app.firebaseapp.com",
@@ -28,11 +28,12 @@ export default function App() {
   const [inputCode, setInputCode] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [playerTextAnswer, setPlayerTextAnswer] = useState('');
 
   // Live Room State aus Firebase Realtime Database
   const [roomData, setRoomData] = useState(null);
 
-  // Audio Feedback Synthesizer
+  // Audio Feedback
   const playSound = (type) => {
     if (!soundEnabled) return;
     try {
@@ -118,13 +119,14 @@ export default function App() {
 
     const snapshot = await get(child(ref(db), `rooms/${cleanCode}`));
     if (!snapshot.exists()) {
-      setErrorMessage('Raum existiert nicht! Bitte erstelle zuerst einen Raum oder prüfe den Code.');
+      setErrorMessage('Raum existiert nicht! Bitte prüfe den Code.');
       return;
     }
 
     await update(ref(db, `rooms/${cleanCode}/players/${playerName}`), {
       name: playerName,
-      score: 0
+      score: 0,
+      answer: null
     });
 
     setRoomCode(cleanCode);
@@ -149,7 +151,7 @@ export default function App() {
 
   // --- MODERATOR ACTIONS ---
   const [newQuestionText, setNewQuestionText] = useState('');
-  const [newQuestionType, setNewQuestionType] = useState('mc');
+  const [newQuestionType, setNewQuestionType] = useState('mc'); // 'mc' | 'buzzer' | 'freetext'
   const [newOptions, setNewOptions] = useState(['', '', '', '']);
   const [newCorrectOption, setNewCorrectOption] = useState(0);
   const [newPoints, setNewPoints] = useState(100);
@@ -179,10 +181,17 @@ export default function App() {
   };
 
   const setQuestionIndex = async (idx) => {
+    // Antworten der Spieler zurücksetzen beim Fragenwechsel
+    const resetPlayers = { ...roomData?.players };
+    Object.keys(resetPlayers).forEach(pKey => {
+      resetPlayers[pKey].answer = null;
+    });
+
     await update(ref(db, `rooms/${roomCode}`), {
       currentQuestionIndex: idx,
       buzzedPlayer: null,
-      revealedAnswer: false
+      revealedAnswer: false,
+      players: resetPlayers
     });
   };
 
@@ -200,6 +209,13 @@ export default function App() {
     playSound('buzzer');
     await update(ref(db, `rooms/${roomCode}`), {
       buzzedPlayer: playerName
+    });
+  };
+
+  const handleSubmitAnswer = async (answerVal) => {
+    if (!roomCode || !playerName) return;
+    await update(ref(db, `rooms/${roomCode}/players/${playerName}`), {
+      answer: answerVal
     });
   };
 
@@ -349,6 +365,9 @@ export default function App() {
               {currentQ ? (
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-700">
+                    <span className="text-xs text-indigo-400 font-semibold uppercase block mb-1">
+                      Typ: {currentQ.type === 'mc' ? 'Multiple Choice' : currentQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'}
+                    </span>
                     <p className="text-xl font-semibold text-white">{currentQ.text}</p>
                     {currentQ.type === 'mc' && (
                       <div className="grid grid-cols-2 gap-2 mt-3">
@@ -360,13 +379,16 @@ export default function App() {
                       </div>
                     )}
                   </div>
+
                   <div className="flex flex-wrap gap-3">
                     <button onClick={toggleReveal} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition">
                       {roomData?.revealedAnswer ? 'Antwort verbergen' : 'Antwort auflösen'}
                     </button>
-                    <button onClick={resetBuzzer} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-medium transition">
-                      Buzzer zurücksetzen
-                    </button>
+                    {currentQ.type === 'buzzer' && (
+                      <button onClick={resetBuzzer} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-medium transition">
+                        Buzzer zurücksetzen
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -392,7 +414,8 @@ export default function App() {
                     className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white"
                   >
                     <option value="mc">Multiple Choice (A, B, C, D)</option>
-                    <option value="text">Freitext / Buzzer</option>
+                    <option value="buzzer">Schnell-Buzzer</option>
+                    <option value="freetext">Freitext-Antwort</option>
                   </select>
                   <input
                     type="number"
@@ -442,7 +465,10 @@ export default function App() {
               <div className="space-y-2">
                 {currentQuestions.map((q, idx) => (
                   <div key={q.id} className={`p-3 rounded-xl border flex items-center justify-between ${idx === currentQIndex ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
-                    <p className="text-sm text-white truncate">{idx + 1}. {q.text}</p>
+                    <div>
+                      <p className="text-sm text-white truncate">{idx + 1}. {q.text}</p>
+                      <span className="text-xs text-slate-500">[{q.type === 'mc' ? 'Multiple Choice' : q.type === 'buzzer' ? 'Buzzer' : 'Freitext'}]</span>
+                    </div>
                     <div className="flex gap-2">
                       <button onClick={() => setQuestionIndex(idx)} className="px-3 py-1 bg-indigo-600 text-white text-xs rounded-lg font-semibold">Aktivieren</button>
                       <button onClick={() => deleteQuestion(q.id)} className="p-1 text-slate-500 hover:text-rose-400"><Trash2 className="w-4 h-4"/></button>
@@ -453,26 +479,40 @@ export default function App() {
             </div>
           </div>
 
-          {/* Spieler Liste */}
+          {/* Spieler Liste & Antworten */}
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
             <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><UserCheck className="w-5 h-5"/> Spieler Live ({playerList.length})</h2>
-            {roomData?.buzzedPlayer && (
+            
+            {currentQ?.type === 'buzzer' && roomData?.buzzedPlayer && (
               <div className="mb-4 p-3 bg-amber-500/20 border border-amber-500/50 rounded-xl text-amber-300 font-bold flex justify-between items-center">
                 <span>🔔 Gebuzzert: {roomData.buzzedPlayer}</span>
                 <button onClick={resetBuzzer} className="text-xs underline">Reset</button>
               </div>
             )}
-            <div className="space-y-2">
+
+            <div className="space-y-3">
               {playerList.map(p => (
-                <div key={p.name} className="p-3 bg-slate-900 rounded-xl flex justify-between items-center border border-slate-700">
-                  <div>
-                    <p className="font-semibold text-white text-sm">{p.name}</p>
-                    <p className="text-xs text-indigo-400">{p.score} Punkte</p>
+                <div key={p.name} className="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold text-white text-sm">{p.name}</p>
+                      <p className="text-xs text-indigo-400">{p.score} Punkte</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => handleAwardPoints(p.name, currentQ ? currentQ.points : 100)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{currentQ ? currentQ.points : 100}</button>
+                      <button onClick={() => handleAwardPoints(p.name, -50)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-50</button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => handleAwardPoints(p.name, currentQ ? currentQ.points : 100)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{currentQ ? currentQ.points : 100}</button>
-                    <button onClick={() => handleAwardPoints(p.name, -50)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-50</button>
-                  </div>
+
+                  {/* Eingereichte Antwort des Spielers anzeigen */}
+                  {p.answer !== null && p.answer !== undefined && (
+                    <div className="pt-2 border-t border-slate-800 text-xs">
+                      <span className="text-slate-500 block">Eingereicht:</span>
+                      <span className="text-emerald-300 font-medium">
+                        {currentQ?.type === 'mc' ? `Option ${['A','B','C','D'][p.answer]}` : p.answer}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -484,6 +524,9 @@ export default function App() {
 
   // --- SPIELER VIEW ---
   if (role === 'player') {
+    const playerObj = roomData?.players?.[playerName];
+    const hasAnswered = playerObj?.answer !== null && playerObj?.answer !== undefined;
+
     return (
       <div className="min-h-screen bg-slate-900 text-white p-4 flex flex-col justify-between">
         <div className="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
@@ -499,16 +542,49 @@ export default function App() {
 
         <div className="my-auto space-y-6 text-center">
           {currentQ ? (
-            <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+            <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 space-y-4">
               <span className="text-xs text-indigo-400 font-semibold uppercase">Aktuelle Frage</span>
-              <p className="text-xl font-bold mt-2">{currentQ.text}</p>
+              <p className="text-xl font-bold">{currentQ.text}</p>
+
+              {/* 1. MULTIPLE CHOICE ANTWORTEN */}
               {currentQ.type === 'mc' && (
-                <div className="grid grid-cols-1 gap-2 mt-4">
+                <div className="grid grid-cols-1 gap-2 pt-2">
                   {currentQ.options.map((opt, idx) => (
-                    <div key={idx} className="p-3 bg-slate-900 rounded-xl border border-slate-700 text-left text-sm">
+                    <button
+                      key={idx}
+                      onClick={() => handleSubmitAnswer(idx)}
+                      className={`w-full p-3 rounded-xl border text-left text-sm font-medium transition ${
+                        playerObj?.answer === idx 
+                          ? 'bg-emerald-600/30 border-emerald-500 text-emerald-200'
+                          : 'bg-slate-900 hover:bg-indigo-600/30 border-slate-700 text-white'
+                      }`}
+                    >
                       <strong className="text-indigo-400 mr-2">{['A','B','C','D'][idx]}:</strong> {opt}
-                    </div>
+                    </button>
                   ))}
+                </div>
+              )}
+
+              {/* 2. FREITEXT ANTWORT EINGABE */}
+              {currentQ.type === 'freetext' && (
+                <div className="pt-2 space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Deine Antwort eingeben..."
+                    value={playerTextAnswer}
+                    onChange={(e) => setPlayerTextAnswer(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    onClick={() => handleSubmitAnswer(playerTextAnswer)}
+                    disabled={!playerTextAnswer.trim()}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
+                  >
+                    <Send className="w-4 h-4"/> Antwort absenden
+                  </button>
+                  {hasAnswered && (
+                    <p className="text-xs text-emerald-400 font-medium pt-1">✓ Antwort an Moderator gesendet!</p>
+                  )}
                 </div>
               )}
             </div>
@@ -516,19 +592,22 @@ export default function App() {
             <p className="text-slate-500">Warte auf die nächste Frage vom Moderator...</p>
           )}
 
-          <button
-            onClick={handleBuzzer}
-            disabled={!!roomData?.buzzedPlayer}
-            className={`w-full py-12 rounded-3xl font-extrabold text-2xl uppercase transition transform active:scale-95 ${
-              roomData?.buzzedPlayer === playerName
-                ? 'bg-amber-500 text-slate-950 animate-pulse'
-                : roomData?.buzzedPlayer
-                ? 'bg-slate-800 text-slate-600 border border-slate-700'
-                : 'bg-rose-600 hover:bg-rose-500 text-white border-b-8 border-rose-800 shadow-2xl'
-            }`}
-          >
-            {roomData?.buzzedPlayer === playerName ? 'GEBUZZERT!' : roomData?.buzzedPlayer ? 'GESPERRT' : 'BUZZER'}
-          </button>
+          {/* 3. BUZZER BUTTON (NUR BEI BUZZER-FRAGEN) */}
+          {currentQ?.type === 'buzzer' && (
+            <button
+              onClick={handleBuzzer}
+              disabled={!!roomData?.buzzedPlayer}
+              className={`w-full py-12 rounded-3xl font-extrabold text-2xl uppercase transition transform active:scale-95 ${
+                roomData?.buzzedPlayer === playerName
+                  ? 'bg-amber-500 text-slate-950 animate-pulse'
+                  : roomData?.buzzedPlayer
+                  ? 'bg-slate-800 text-slate-600 border border-slate-700'
+                  : 'bg-rose-600 hover:bg-rose-500 text-white border-b-8 border-rose-800 shadow-2xl'
+              }`}
+            >
+              {roomData?.buzzedPlayer === playerName ? 'GEBUZZERT!' : roomData?.buzzedPlayer ? 'GESPERRT' : 'BUZZER'}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -569,12 +648,24 @@ export default function App() {
                 ))}
               </div>
             )}
+
+            {/* Freitext-Antworten auf dem TV anzeigen, wenn aufgelöst */}
+            {currentQ.type === 'freetext' && roomData?.revealedAnswer && (
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                {playerList.map(p => (
+                  <div key={p.name} className="p-4 bg-slate-900 border border-slate-800 rounded-xl text-left">
+                    <span className="text-xs text-slate-500 block">{p.name}:</span>
+                    <span className="text-lg font-semibold text-emerald-300">{p.answer || 'Keine Antwort'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-slate-600 text-xl font-bold">Warte auf den Start der nächsten Runde...</p>
         )}
 
-        {roomData?.buzzedPlayer && (
+        {currentQ?.type === 'buzzer' && roomData?.buzzedPlayer && (
           <div className="p-6 bg-amber-500/20 border-2 border-amber-500 rounded-2xl text-amber-300 text-2xl font-black animate-bounce inline-block">
             🔔 {roomData.buzzedPlayer} HAT GEBUZZERT!
           </div>
