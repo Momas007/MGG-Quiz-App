@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, get, child, remove } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight, Radio, FolderPlus, BookOpen, Layers
+  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight, Radio, FolderPlus, BookOpen, Layers, Globe
 } from 'lucide-react';
 
 // Firebase Konfiguration
@@ -21,7 +21,251 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+// Übersetzungen (Deutsch mit Österreich 🇦🇹, Englisch 🇬🇧, Serbisch 🇷🇸)
+const translations = {
+  de: {
+    appName: "Quiz Show Live",
+    appSub: "Echtzeit-Quiz für dich & deine Freunde",
+    yourName: "Dein Name",
+    namePlaceholder: "z. B. Alex",
+    hostRoom: "Als Moderator Raum erstellen",
+    selectCollection: "Fragen-Kollektion wählen",
+    emptyRoom: "--- Leerer Raum (Standard: +5 / -1) ---",
+    createRoomBtn: "Raum mit gewählter Kollektion erstellen",
+    createCollBtn: "Neue Fragen-Kollektion erstellen",
+    joinRoom: "Einem Raum beitreten / Hot-Join",
+    roomCodePlaceholder: "5-stelliger Code",
+    joinBtn: "Raum betreten",
+    tvBtn: "TV / Discord Ansicht",
+    roomClosed: "Der Raum wurde geschlossen.",
+    roomNotExist: "Raum existiert nicht!",
+    errCreate: "Fehler beim Erstellen des Raums.",
+    errNoName: "Bitte gib zuerst einen Kollektionsnamen ein.",
+    errNoQ: "Bitte füge mindestens eine Frage hinzu.",
+    saveSuccess: "Kollektion erfolgreich in der Datenbank gespeichert!",
+    collectionManager: "Kollektions-Manager",
+    saveCollection: "Kollektion speichern",
+    cancel: "Abbrechen",
+    collectionName: "Kollektionsname",
+    collNamePlaceholder: "z. B. Allgemeinwissen 1",
+    defaultCorrect: "Standard Punkte (+)",
+    defaultWrong: "Standard Abzug (-)",
+    addQuestion: "Frage hinzufügen",
+    questionTextPlaceholder: "Fragetext eintippen...",
+    questionType: "Fragetyp",
+    mc: "Multiple Choice",
+    buzzer: "Schnell-Buzzer",
+    freetext: "Freitext-Antwort",
+    correctAnswerText: "Musterantwort / Richtige Lösung",
+    addQToColl: "Frage zur Kollektion hinzufügen",
+    includedQuestions: "Enthaltene Fragen",
+    moderatorControl: "Moderator Control",
+    roomCode: "Raumcode",
+    closeAndDelete: "Raum Schließen & Löschen",
+    editRequestMsg: "möchte seine Freitext-Antwort korrigieren. Erlauben?",
+    allow: "Erlauben",
+    deny: "Ablehnen",
+    modPreview: "Moderator Vorschau",
+    live: "LIVE",
+    previewOnly: "Nur Vorschau",
+    prev: "Vorherige",
+    next: "Nächste",
+    releaseLive: "Diese Frage jetzt für ALLE FREIGEBEN & LIVE SCHALTEN",
+    waitingBuzzer: "Warte auf Buzzer...",
+    resetBuzzer: "Buzzer zurücksetzen",
+    correct: "Richtig",
+    wrong: "Falsch",
+    hideAnswer: "Antwort verbergen",
+    revealAnswer: "Antwort auflösen (Auto-Punkte)",
+    createNewQuestion: "Neue Frage erstellen",
+    saveQuestion: "Frage speichern",
+    createdQuestions: "Erstellte Fragen",
+    viewPreview: "Ansehen / Vorschau",
+    playersLive: "Spieler Live",
+    noPlayers: "Noch keine Spieler beigetreten.",
+    answerLabel: "Antwort:",
+    showOnTV: "Auf TV zeigen",
+    activeOnTV: "Auf TV [Aktiv]",
+    mitspieler: "Mitspieler",
+    leave: "Verlassen",
+    currentQuestion: "Aktuelle Frage",
+    submitAnswer: "Antwort absenden",
+    answerSubmitted: "✓ Antwort eingereicht & gesperrt",
+    waitingHostEdit: "Warte auf Bestätigung des Moderators...",
+    editRejected: "Korrektur-Anfrage abgelehnt.",
+    requestEdit: "Korrektur beim Moderator anfragen",
+    buzzedState: "GEBUZZERT!",
+    locked: "GESPERRT",
+    blocked: "BLOCKIERT",
+    buzzerBtn: "BUZZER",
+    waitingHostRelease: "Warte auf die Freigabe der nächsten Frage durch den Moderator...",
+    modelAnswer: "Musterantwort:",
+    noAnswer: "Keine Angabe"
+  },
+  en: {
+    appName: "Quiz Show Live",
+    appSub: "Real-time quiz for you & your friends",
+    yourName: "Your Name",
+    namePlaceholder: "e.g. Alex",
+    hostRoom: "Create Room as Host",
+    selectCollection: "Select Question Collection",
+    emptyRoom: "--- Empty Room (Default: +5 / -1) ---",
+    createRoomBtn: "Create room with selected collection",
+    createCollBtn: "Create new question collection",
+    joinRoom: "Join Room / Hot-Join",
+    roomCodePlaceholder: "5-digit code",
+    joinBtn: "Join Room",
+    tvBtn: "TV / Discord View",
+    roomClosed: "The room has been closed.",
+    roomNotExist: "Room does not exist!",
+    errCreate: "Error creating room.",
+    errNoName: "Please enter a collection name first.",
+    errNoQ: "Please add at least one question.",
+    saveSuccess: "Collection successfully saved in database!",
+    collectionManager: "Collection Manager",
+    saveCollection: "Save Collection",
+    cancel: "Cancel",
+    collectionName: "Collection Name",
+    collNamePlaceholder: "e.g. General Knowledge 1",
+    defaultCorrect: "Default Points (+)",
+    defaultWrong: "Default Deduction (-)",
+    addQuestion: "Add Question",
+    questionTextPlaceholder: "Type question text...",
+    questionType: "Question Type",
+    mc: "Multiple Choice",
+    buzzer: "Fast Buzzer",
+    freetext: "Free Text Answer",
+    correctAnswerText: "Model Answer / Correct Solution",
+    addQToColl: "Add question to collection",
+    includedQuestions: "Included Questions",
+    moderatorControl: "Moderator Control",
+    roomCode: "Room Code",
+    closeAndDelete: "Close & Delete Room",
+    editRequestMsg: "wants to correct their free text answer. Allow?",
+    allow: "Allow",
+    deny: "Deny",
+    modPreview: "Moderator Preview",
+    live: "LIVE",
+    previewOnly: "Preview Only",
+    prev: "Previous",
+    next: "Next",
+    releaseLive: "Release & Go Live for ALL",
+    waitingBuzzer: "Waiting for buzzer...",
+    resetBuzzer: "Reset Buzzer",
+    correct: "Correct",
+    wrong: "Wrong",
+    hideAnswer: "Hide Answer",
+    revealAnswer: "Reveal Answer (Auto Points)",
+    createNewQuestion: "Create New Question",
+    saveQuestion: "Save Question",
+    createdQuestions: "Created Questions",
+    viewPreview: "View / Preview",
+    playersLive: "Players Live",
+    noPlayers: "No players joined yet.",
+    answerLabel: "Answer:",
+    showOnTV: "Show on TV",
+    activeOnTV: "On TV [Active]",
+    mitspieler: "Player",
+    leave: "Leave",
+    currentQuestion: "Current Question",
+    submitAnswer: "Submit Answer",
+    answerSubmitted: "✓ Answer submitted & locked",
+    waitingHostEdit: "Waiting for host approval...",
+    editRejected: "Correction request denied.",
+    requestEdit: "Request correction from host",
+    buzzedState: "BUZZED!",
+    locked: "LOCKED",
+    blocked: "BLOCKED",
+    buzzerBtn: "BUZZER",
+    waitingHostRelease: "Waiting for the host to release the next question...",
+    modelAnswer: "Model Answer:",
+    noAnswer: "No answer"
+  },
+  sr: {
+    appName: "Kviz Uživo",
+    appSub: "Kviz u realnom vremenu za tebe i prijatelje",
+    yourName: "Tvoje ime",
+    namePlaceholder: "npr. Aleksa",
+    hostRoom: "Kreiraj sobu kao Moderator",
+    selectCollection: "Izaberi kolekciju pitanja",
+    emptyRoom: "--- Prazna soba (Standard: +5 / -1) ---",
+    createRoomBtn: "Kreiraj sobu sa izabranom kolekcijom",
+    createCollBtn: "Kreiraj novu kolekciju pitanja",
+    joinRoom: "Pridruži se sobi / Hot-Join",
+    roomCodePlaceholder: "5-cifreni kod",
+    joinBtn: "Uđi u sobu",
+    tvBtn: "TV / Discord Prikaz",
+    roomClosed: "Soba je zatvorena.",
+    roomNotExist: "Soba ne postoji!",
+    errCreate: "Greška prilikom kreiranja sobe.",
+    errNoName: "Molimo unesi naziv kolekcije.",
+    errNoQ: "Molimo dodaj barem jedno pitanje.",
+    saveSuccess: "Kolekcija uspešno sačuvana u bazi!",
+    collectionManager: "Upravljač Kolekcijama",
+    saveCollection: "Sačuvaj kolekciju",
+    cancel: "Otkaži",
+    collectionName: "Naziv kolekcije",
+    collNamePlaceholder: "npr. Opšta kultura 1",
+    defaultCorrect: "Standardni poeni (+)",
+    defaultWrong: "Standardni minus (-)",
+    addQuestion: "Dodaj pitanje",
+    questionTextPlaceholder: "Unesi tekst pitanja...",
+    questionType: "Tip pitanja",
+    mc: "Više ponuđenih odgovora",
+    buzzer: "Brzi Buzzer",
+    freetext: "Slobodan tekst",
+    correctAnswerText: "Tačan odgovor / rešenje",
+    addQToColl: "Dodaj pitanje u kolekciju",
+    includedQuestions: "Sadržana pitanja",
+    moderatorControl: "Kontrola Moderatora",
+    roomCode: "Kod sobe",
+    closeAndDelete: "Zatvori i obriši sobu",
+    editRequestMsg: "želi da ispravi svoj odgovor. Dozvoliti?",
+    allow: "Dozvoli",
+    deny: "Odbij",
+    modPreview: "Pregled moderatora",
+    live: "UŽIVO",
+    previewOnly: "Samo pregled",
+    prev: "Prethodna",
+    next: "Sledeća",
+    releaseLive: "Pusti pitanje UŽIVO za SVE",
+    waitingBuzzer: "Čeka se buzzer...",
+    resetBuzzer: "Resetuj buzzer",
+    correct: "Tačno",
+    wrong: "Netačno",
+    hideAnswer: "Sakrij odgovor",
+    revealAnswer: "Prikaži odgovor (Automatski poeni)",
+    createNewQuestion: "Kreiraj novo pitanje",
+    saveQuestion: "Sačuvaj pitanje",
+    createdQuestions: "Kreirana pitanja",
+    viewPreview: "Pregled",
+    playersLive: "Igrači Uživo",
+    noPlayers: "Nema prijavljenih igrača.",
+    answerLabel: "Odgovor:",
+    showOnTV: "Prikaži na TV-u",
+    activeOnTV: "Na TV-u [Aktivno]",
+    mitspieler: "Igrač",
+    leave: "Napusti",
+    currentQuestion: "Trenutno pitanje",
+    submitAnswer: "Pošalji odgovor",
+    answerSubmitted: "✓ Odgovor poslat i zaključan",
+    waitingHostEdit: "Čeka se odobrenje moderatora...",
+    editRejected: "Zahtev za ispravku odbijen.",
+    requestEdit: "Zatraži ispravku od moderatora",
+    buzzedState: "PRITISNUTO!",
+    locked: "ZAKLJUČANO",
+    blocked: "BLOKIRANO",
+    buzzerBtn: "BUZZER",
+    waitingHostRelease: "Čeka se da moderator pusti sledeće pitanje...",
+    modelAnswer: "Tačan odgovor:",
+    noAnswer: "Nema odgovora"
+  }
+};
+
 export default function App() {
+  const [lang, setLang] = useState('de');
+  const t = translations[lang];
+
   const [role, setRole] = useState(null); // 'host' | 'player' | 'tv' | 'collection_creator'
   const [roomCode, setRoomCode] = useState('');
   const [playerName, setPlayerName] = useState('');
@@ -122,7 +366,7 @@ export default function App() {
         setRole(null);
         setRoomCode('');
         setInputCode('');
-        setErrorMessage('Der Raum wurde geschlossen.');
+        setErrorMessage(t.roomClosed);
         return;
       }
 
@@ -184,7 +428,7 @@ export default function App() {
       setHostPreviewIndex(0);
       setErrorMessage('');
     } catch (err) {
-      setErrorMessage('Fehler beim Erstellen des Raums.');
+      setErrorMessage(t.errCreate);
     }
   };
 
@@ -198,7 +442,7 @@ export default function App() {
 
     const snapshot = await get(child(ref(db), `rooms/${cleanCode}`));
     if (!snapshot.exists()) {
-      setErrorMessage('Raum existiert nicht!');
+      setErrorMessage(t.roomNotExist);
       return;
     }
 
@@ -242,7 +486,7 @@ export default function App() {
 
     const snapshot = await get(child(ref(db), `rooms/${cleanCode}`));
     if (!snapshot.exists()) {
-      setErrorMessage('Raum existiert nicht!');
+      setErrorMessage(t.roomNotExist);
       return;
     }
 
@@ -279,7 +523,6 @@ export default function App() {
   const [newPoints, setNewPoints] = useState(5);
   const [newWrongPoints, setNewWrongPoints] = useState(1);
 
-  // Aktualisiere Standard-Werte für neue Fragen basierend auf dem Raum-Status
   useEffect(() => {
     if (roomData?.correctPoints !== undefined) setNewPoints(roomData.correctPoints);
     if (roomData?.wrongPoints !== undefined) setNewWrongPoints(roomData.wrongPoints);
@@ -460,17 +703,47 @@ export default function App() {
     await update(ref(db), updates);
   };
 
+  // Sprachauswahl-Komponente für oben rechts
+  const renderLanguageSelector = () => (
+    <div className="absolute top-4 right-4 z-50 flex items-center gap-1.5 bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-xl shadow-lg">
+      <Globe className="w-4 h-4 text-indigo-400 mr-1" />
+      <button 
+        onClick={() => setLang('de')} 
+        className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 ${lang === 'de' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+        title="Deutsch"
+      >
+        🇦🇹 DE
+      </button>
+      <button 
+        onClick={() => setLang('en')} 
+        className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 ${lang === 'en' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+        title="English"
+      >
+        🇬🇧 EN
+      </button>
+      <button 
+        onClick={() => setLang('sr')} 
+        className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 ${lang === 'sr' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+        title="Srpski"
+      >
+        🇷🇸 SR
+      </button>
+    </div>
+  );
+
   // --- HOME / LOGIN SCREEN ---
   if (!role) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
+        {renderLanguageSelector()}
+
         <div className="max-w-md w-full bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700 space-y-6">
           <div className="text-center">
             <div className="inline-flex p-3 bg-indigo-600/20 text-indigo-400 rounded-2xl mb-3">
               <Sparkles className="w-10 h-10" />
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight">Quiz Show Live</h1>
-            <p className="text-slate-400 text-sm mt-1">Echtzeit-Quiz für dich & deine Freunde</p>
+            <h1 className="text-3xl font-extrabold tracking-tight">{t.appName}</h1>
+            <p className="text-slate-400 text-sm mt-1">{t.appSub}</p>
           </div>
 
           {errorMessage && (
@@ -481,12 +754,12 @@ export default function App() {
 
           <div className="space-y-6">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Dein Name</label>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{t.yourName}</label>
               <div className="relative">
                 <User className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
                 <input
                   type="text"
-                  placeholder="z. B. Alex"
+                  placeholder={t.namePlaceholder}
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-indigo-500"
@@ -497,20 +770,20 @@ export default function App() {
             <div className="grid grid-cols-1 gap-4">
               <form onSubmit={handleCreateRoom} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 space-y-3">
                 <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-indigo-400" /> Als Moderator Raum erstellen
+                  <Shield className="w-4 h-4 text-indigo-400" /> {t.hostRoom}
                 </h3>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Fragen-Kollektion wählen</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t.selectCollection}</label>
                   <select
                     value={selectedCollectionKey}
                     onChange={(e) => setSelectedCollectionKey(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white"
                   >
-                    <option value="">--- Leerer Raum (Standard: +5 / -1) ---</option>
+                    <option value="">{t.emptyRoom}</option>
                     {Object.entries(publicCollections).map(([cKey, cData]) => (
                       <option key={cKey} value={cKey}>
-                        {cData.header} ({cData.questions?.length || 0} Fragen | +{cData.correctPoints !== undefined ? cData.correctPoints : 5} / -{cData.wrongPoints !== undefined ? cData.wrongPoints : 1})
+                        {cData.header} ({cData.questions?.length || 0} Q | +{cData.correctPoints !== undefined ? cData.correctPoints : 5} / -{cData.wrongPoints !== undefined ? cData.wrongPoints : 1})
                       </option>
                     ))}
                   </select>
@@ -521,7 +794,7 @@ export default function App() {
                   disabled={!playerName.trim()}
                   className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition"
                 >
-                  Raum mit gewählter Kollektion erstellen
+                  {t.createRoomBtn}
                 </button>
               </form>
 
@@ -536,19 +809,19 @@ export default function App() {
                   }}
                   className="text-xs text-indigo-400 hover:underline flex items-center justify-center gap-1 mx-auto font-medium"
                 >
-                  <FolderPlus className="w-4 h-4" /> Neue Fragen-Kollektion erstellen
+                  <FolderPlus className="w-4 h-4" /> {t.createCollBtn}
                 </button>
               </div>
 
               <form onSubmit={handleJoinRoom} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
                 <h3 className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-emerald-400" /> Einem Raum beitreten / Hot-Join
+                  <KeyRound className="w-4 h-4 text-emerald-400" /> {t.joinRoom}
                 </h3>
                 <div className="flex gap-2 mb-3">
                   <input
                     type="text"
                     maxLength={5}
-                    placeholder="5-stelliger Code"
+                    placeholder={t.roomCodePlaceholder}
                     value={inputCode}
                     onChange={(e) => setInputCode(e.target.value.toUpperCase())}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-center text-lg font-mono tracking-widest uppercase focus:outline-none focus:border-emerald-500"
@@ -559,7 +832,7 @@ export default function App() {
                   disabled={!playerName.trim() || inputCode.length !== 5}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition"
                 >
-                  Raum betreten
+                  {t.joinBtn}
                 </button>
               </form>
 
@@ -578,7 +851,7 @@ export default function App() {
                     disabled={inputCode.length !== 5}
                     className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs py-2 rounded-lg flex items-center justify-center gap-2"
                   >
-                    <Tv className="w-4 h-4" /> TV / Discord Ansicht
+                    <Tv className="w-4 h-4" /> {t.tvBtn}
                   </button>
                 </div>
               </form>
@@ -594,11 +867,11 @@ export default function App() {
     const handleSaveCollectionToDB = async () => {
       const cleanHeader = collHeader.trim();
       if (!cleanHeader) {
-        alert('Bitte gib zuerst einen Kollektionsnamen ein.');
+        alert(t.errNoName);
         return;
       }
       if (collQuestions.length === 0) {
-        alert('Bitte füge mindestens eine Frage hinzu.');
+        alert(t.errNoQ);
         return;
       }
 
@@ -613,7 +886,7 @@ export default function App() {
           questions: collQuestions
         });
 
-        alert('Kollektion erfolgreich in der Datenbank unter dem Namen "' + cleanHeader + '" gespeichert!');
+        alert(t.saveSuccess);
         setRole(null);
       } catch (err) {
         console.error("Fehler beim Speichern der Kollektion:", err);
@@ -622,15 +895,16 @@ export default function App() {
     };
 
     return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 p-6 flex justify-center">
-        <div className="w-full max-w-3xl space-y-6">
-          {/* KOLLEKTIONS-NAME & GLOBALE EINSTELLUNGEN */}
+      <div className="min-h-screen bg-slate-900 text-slate-100 p-6 flex justify-center relative">
+        {renderLanguageSelector()}
+
+        <div className="w-full max-w-3xl space-y-6 pt-10">
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-2xl space-y-4">
             <div className="flex justify-between items-center pb-3 border-b border-slate-700">
               <div>
-                <span className="text-xs text-indigo-400 font-semibold uppercase">Kollektions-Manager</span>
+                <span className="text-xs text-indigo-400 font-semibold uppercase">{t.collectionManager}</span>
                 <h1 className="text-xl font-bold flex items-center gap-2">
-                  <FolderPlus className="w-5 h-5 text-indigo-400" /> Neue Kollektion erstellen
+                  <FolderPlus className="w-5 h-5 text-indigo-400" /> {t.createCollBtn}
                 </h1>
               </div>
               <div className="flex gap-2">
@@ -639,31 +913,31 @@ export default function App() {
                   onClick={handleSaveCollectionToDB}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg flex items-center gap-2 text-sm"
                 >
-                  <Check className="w-4 h-4"/> Speichern ({collQuestions.length})
+                  <Check className="w-4 h-4"/> {t.saveCollection} ({collQuestions.length})
                 </button>
                 <button 
                   type="button"
                   onClick={() => setRole(null)}
                   className="px-3 py-2 bg-slate-700 text-slate-300 border border-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-600"
                 >
-                  Abbrechen
+                  {t.cancel}
                 </button>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-1">
-                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Kollektionsname</label>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t.collectionName}</label>
                 <input
                   type="text"
-                  placeholder="z. B. Allgemeinwissen 1"
+                  placeholder={t.collNamePlaceholder}
                   value={collHeader}
                   onChange={(e) => setCollHeader(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm font-semibold"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-emerald-400 uppercase mb-1">Standard Punkte (+)</label>
+                <label className="block text-xs font-semibold text-emerald-400 uppercase mb-1">{t.defaultCorrect}</label>
                 <input
                   type="number"
                   value={collCorrectPoints}
@@ -672,7 +946,7 @@ export default function App() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-rose-400 uppercase mb-1">Standard Abzug (-)</label>
+                <label className="block text-xs font-semibold text-rose-400 uppercase mb-1">{t.defaultWrong}</label>
                 <input
                   type="number"
                   value={collWrongPoints}
@@ -683,35 +957,34 @@ export default function App() {
             </div>
           </div>
 
-          {/* Frage hinzufügen Formular */}
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-4 shadow-xl">
-            <h2 className="text-lg font-bold text-indigo-400">Frage hinzufügen</h2>
+            <h2 className="text-lg font-bold text-indigo-400">{t.addQuestion}</h2>
             
             <div className="space-y-4">
               <input
                 type="text"
-                placeholder="Fragetext eintippen..."
+                placeholder={t.questionTextPlaceholder}
                 value={newCollQText}
                 onChange={(e) => setNewCollQText(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm"
               />
               
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Fragetyp</label>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">{t.questionType}</label>
                 <select
                   value={newCollQType}
                   onChange={(e) => setNewCollQType(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
                 >
-                  <option value="mc">Multiple Choice</option>
-                  <option value="buzzer">Schnell-Buzzer</option>
-                  <option value="freetext">Freitext-Antwort</option>
+                  <option value="mc">{t.mc}</option>
+                  <option value="buzzer">{t.buzzer}</option>
+                  <option value="freetext">{t.freetext}</option>
                 </select>
               </div>
 
               {newCollQType === 'freetext' && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Musterantwort / Richtige Lösung</label>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">{t.correctAnswerText}</label>
                   <input
                     type="text"
                     placeholder="z. B. Wien"
@@ -768,21 +1041,20 @@ export default function App() {
                 }}
                 className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl font-semibold transition text-sm flex items-center justify-center gap-2"
               >
-                <Plus className="w-4 h-4"/> Frage zur Kollektion hinzufügen
+                <Plus className="w-4 h-4"/> {t.addQToColl}
               </button>
             </div>
           </div>
 
-          {/* Liste der bisher erstellten Fragen */}
           {collQuestions.length > 0 && (
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-3 shadow-xl">
-              <h3 className="text-sm font-bold text-slate-400">Enthaltene Fragen ({collQuestions.length})</h3>
+              <h3 className="text-sm font-bold text-slate-400">{t.includedQuestions} ({collQuestions.length})</h3>
               <div className="space-y-2">
                 {collQuestions.map((q, idx) => (
                   <div key={q.id} className="p-3 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-between text-sm">
                     <div>
                       <p className="text-white font-medium">{idx + 1}. {q.text}</p>
-                      <span className="text-xs text-slate-500">[{q.type === 'mc' ? 'Multiple Choice' : q.type === 'buzzer' ? 'Buzzer' : 'Freitext'}]</span>
+                      <span className="text-xs text-slate-500">[{q.type === 'mc' ? t.mc : q.type === 'buzzer' ? t.buzzer : t.freetext}]</span>
                     </div>
                     <button
                       type="button"
@@ -819,12 +1091,14 @@ export default function App() {
     const currentRoomWrongPts = roomData?.wrongPoints !== undefined ? roomData.wrongPoints : 1;
 
     return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 p-6">
-        <div className="flex justify-between items-center pb-6 border-b border-slate-800 mb-6">
+      <div className="min-h-screen bg-slate-900 text-slate-100 p-6 relative">
+        {renderLanguageSelector()}
+
+        <div className="flex justify-between items-center pb-6 border-b border-slate-800 mb-6 pt-6">
           <div>
-            <span className="text-xs text-indigo-400 font-semibold uppercase">Moderator Control</span>
+            <span className="text-xs text-indigo-400 font-semibold uppercase">{t.moderatorControl}</span>
             <h1 className="text-2xl font-bold flex items-center gap-3">
-              Raumcode: <span className="font-mono bg-indigo-600/30 text-indigo-300 px-3 py-1 rounded-lg border border-indigo-500/30">{roomCode}</span>
+              {t.roomCode}: <span className="font-mono bg-indigo-600/30 text-indigo-300 px-3 py-1 rounded-lg border border-indigo-500/30">{roomCode}</span>
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -835,7 +1109,7 @@ export default function App() {
               {soundEnabled ? <Volume2 className="w-5 h-5 text-emerald-400" /> : <VolumeX className="w-5 h-5 text-slate-500" />}
             </button>
             <button onClick={handleLeaveHost} className="px-4 py-2 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-rose-600/30">
-              <LogOut className="w-4 h-4"/> Raum Schließen & Löschen
+              <LogOut className="w-4 h-4"/> {t.closeAndDelete}
             </button>
           </div>
         </div>
@@ -843,11 +1117,11 @@ export default function App() {
         {Object.entries(editRequests).filter(([_, status]) => status === 'pending').map(([pName]) => (
           <div key={pName} className="mb-6 p-4 bg-indigo-600/20 border border-indigo-500 rounded-xl flex items-center justify-between animate-pulse">
             <span className="text-sm font-semibold text-indigo-200">
-              ✏️ <strong>{pName}</strong> möchte seine Freitext-Antwort korrigieren. Erlauben?
+              ✏️ <strong>{pName}</strong> {t.editRequestMsg}
             </span>
             <div className="flex gap-2">
-              <button onClick={() => handleRespondEditRequest(pName, true)} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold">Erlauben</button>
-              <button onClick={() => handleRespondEditRequest(pName, false)} className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold">Ablehnen</button>
+              <button onClick={() => handleRespondEditRequest(pName, true)} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold">{t.allow}</button>
+              <button onClick={() => handleRespondEditRequest(pName, false)} className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold">{t.deny}</button>
             </div>
           </div>
         ))}
@@ -858,14 +1132,14 @@ export default function App() {
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-indigo-400 flex items-center gap-2"><Eye className="w-5 h-5"/> Moderator Vorschau</h2>
+                  <h2 className="text-lg font-bold text-indigo-400 flex items-center gap-2"><Eye className="w-5 h-5"/> {t.modPreview}</h2>
                   {isPreviewLive ? (
                     <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-bold rounded-full flex items-center gap-1">
-                      <Radio className="w-3 h-3 animate-pulse" /> LIVE
+                      <Radio className="w-3 h-3 animate-pulse" /> {t.live}
                     </span>
                   ) : (
                     <span className="px-2.5 py-0.5 bg-slate-700 text-slate-400 text-xs font-medium rounded-full">
-                      Nur Vorschau
+                      {t.previewOnly}
                     </span>
                   )}
                 </div>
@@ -877,7 +1151,7 @@ export default function App() {
                       disabled={hostPreviewIndex <= 0}
                       className="p-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 flex items-center gap-1 text-xs font-semibold"
                     >
-                      <ChevronLeft className="w-4 h-4"/> Vorherige
+                      <ChevronLeft className="w-4 h-4"/> {t.prev}
                     </button>
                     <span className="text-xs text-slate-400 font-mono">
                       {hostPreviewIndex + 1} / {currentQuestions.length}
@@ -887,7 +1161,7 @@ export default function App() {
                       disabled={hostPreviewIndex >= currentQuestions.length - 1}
                       className="p-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-300 hover:text-white disabled:opacity-30 flex items-center gap-1 text-xs font-semibold"
                     >
-                      Nächste <ChevronRight className="w-4 h-4"/>
+                      {t.next} <ChevronRight className="w-4 h-4"/>
                     </button>
                   </div>
                 )}
@@ -897,7 +1171,7 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-700">
                     <span className="text-xs text-indigo-400 font-semibold uppercase block mb-1">
-                      Typ: {previewQ.type === 'mc' ? 'Multiple Choice' : previewQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'} | Richtig: +{previewQ.points || currentRoomCorrectPts} / Falsch: -{previewQ.wrongPoints !== undefined ? previewQ.wrongPoints : currentRoomWrongPts} Pkt.
+                      {previewQ.type === 'mc' ? t.mc : previewQ.type === 'buzzer' ? t.buzzer : t.freetext} | {t.correct}: +{previewQ.points || currentRoomCorrectPts} / {t.wrong}: -{previewQ.wrongPoints !== undefined ? previewQ.wrongPoints : currentRoomWrongPts} Pkt.
                     </span>
                     <p className="text-xl font-semibold text-white">{previewQ.text}</p>
 
@@ -912,7 +1186,7 @@ export default function App() {
                     )}
                     
                     {previewQ.type === 'freetext' && previewQ.correctText && (
-                      <p className="text-xs text-emerald-400 mt-2 font-mono">Richtige Musterantwort: {previewQ.correctText}</p>
+                      <p className="text-xs text-emerald-400 mt-2 font-mono">{t.modelAnswer} {previewQ.correctText}</p>
                     )}
                   </div>
 
@@ -921,7 +1195,7 @@ export default function App() {
                       onClick={() => releaseQuestionToLive(hostPreviewIndex)}
                       className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
                     >
-                      <Radio className="w-5 h-5" /> Diese Frage jetzt für ALLE FREIGEBEN & LIVE SCHALTEN
+                      <Radio className="w-5 h-5" /> {t.releaseLive}
                     </button>
                   ) : (
                     <div className="space-y-3 pt-2">
@@ -929,11 +1203,11 @@ export default function App() {
                         <div className="p-4 bg-amber-500/20 border border-amber-500/50 rounded-xl space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-bold text-amber-300">
-                              {roomData?.buzzedPlayer ? `🔔 Gebuzzert von: ${roomData.buzzedPlayer}` : 'Warte auf Buzzer...'}
+                              {roomData?.buzzedPlayer ? `🔔 ${roomData.buzzedPlayer}` : t.waitingBuzzer}
                             </span>
                             {roomData?.buzzedPlayer && (
                               <button onClick={resetBuzzerOnly} className="text-xs underline text-amber-200 flex items-center gap-1">
-                                <RotateCcw className="w-3 h-3"/> Buzzer zurücksetzen
+                                <RotateCcw className="w-3 h-3"/> {t.resetBuzzer}
                               </button>
                             )}
                           </div>
@@ -941,10 +1215,10 @@ export default function App() {
                           {roomData?.buzzedPlayer && (
                             <div className="flex gap-2 pt-1">
                               <button onClick={() => handleEvaluateBuzzer(true)} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
-                                <Check className="w-5 h-5"/> Richtig (+{liveQ?.points || currentRoomCorrectPts} Pkt.)
+                                <Check className="w-5 h-5"/> {t.correct} (+{liveQ?.points || currentRoomCorrectPts})
                               </button>
                               <button onClick={() => handleEvaluateBuzzer(false)} className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
-                                <X className="w-5 h-5"/> Falsch (-{liveQ?.wrongPoints !== undefined ? liveQ.wrongPoints : currentRoomWrongPts} Pkt.)
+                                <X className="w-5 h-5"/> {t.wrong} (-{liveQ?.wrongPoints !== undefined ? liveQ.wrongPoints : currentRoomWrongPts})
                               </button>
                             </div>
                           )}
@@ -953,23 +1227,23 @@ export default function App() {
 
                       <div className="flex flex-wrap gap-3">
                         <button onClick={toggleReveal} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition">
-                          {roomData?.revealedAnswer ? 'Antwort verbergen' : 'Antwort auflösen (Auto-Punkte)'}
+                          {roomData?.revealedAnswer ? t.hideAnswer : t.revealAnswer}
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="text-slate-500 text-sm">Keine Frage in diesem Raum vorhanden. Erstelle unten deine erste Frage.</p>
+                <p className="text-slate-500 text-sm">Keine Frage vorhanden.</p>
               )}
             </div>
 
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-              <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><Plus className="w-5 h-5"/> Neue Frage erstellen</h2>
+              <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><Plus className="w-5 h-5"/> {t.createNewQuestion}</h2>
               <form onSubmit={addQuestion} className="space-y-4">
                 <input
                   type="text"
-                  placeholder="Fragetext eintippen..."
+                  placeholder={t.questionTextPlaceholder}
                   value={newQuestionText}
                   onChange={(e) => setNewQuestionText(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
@@ -977,42 +1251,40 @@ export default function App() {
                 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="col-span-1">
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Typ</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">{t.questionType}</label>
                     <select
                       value={newQuestionType}
                       onChange={(e) => setNewQuestionType(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
                     >
-                      <option value="mc">Multiple Choice</option>
-                      <option value="buzzer">Schnell-Buzzer</option>
-                      <option value="freetext">Freitext-Antwort</option>
+                      <option value="mc">{t.mc}</option>
+                      <option value="buzzer">{t.buzzer}</option>
+                      <option value="freetext">{t.freetext}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-emerald-400 mb-1">Punkte (+)</label>
+                    <label className="block text-xs font-semibold text-emerald-400 mb-1">{t.correct} (+)</label>
                     <input
                       type="number"
                       value={newPoints}
                       onChange={(e) => setNewPoints(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
-                      placeholder="Punkte"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-rose-400 mb-1">Abzug (-)</label>
+                    <label className="block text-xs font-semibold text-rose-400 mb-1">{t.wrong} (-)</label>
                     <input
                       type="number"
                       value={newWrongPoints}
                       onChange={(e) => setNewWrongPoints(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
-                      placeholder="Abzug"
                     />
                   </div>
                 </div>
 
                 {newQuestionType === 'freetext' && (
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Musterantwort / Richtige Lösung</label>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">{t.correctAnswerText}</label>
                     <input
                       type="text"
                       placeholder="z. B. Wien"
@@ -1051,23 +1323,23 @@ export default function App() {
                 )}
 
                 <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl font-semibold transition">
-                  Frage speichern
+                  {t.saveQuestion}
                 </button>
               </form>
             </div>
 
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-              <h3 className="text-sm font-bold text-slate-400 mb-3">Erstellte Fragen ({currentQuestions.length})</h3>
+              <h3 className="text-sm font-bold text-slate-400 mb-3">{t.createdQuestions} ({currentQuestions.length})</h3>
               <div className="space-y-2">
                 {currentQuestions.map((q, idx) => (
                   <div key={q.id} className={`p-3 rounded-xl border flex items-center justify-between ${idx === liveQIndex ? 'bg-emerald-950/30 border-emerald-500' : idx === hostPreviewIndex ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
                     <div>
                       <p className="text-sm text-white truncate">{idx + 1}. {q.text}</p>
-                      <span className="text-xs text-slate-500">[{q.type === 'mc' ? 'Multiple Choice' : q.type === 'buzzer' ? 'Buzzer' : 'Freitext'} | Richtig: +{q.points || currentRoomCorrectPts} / Falsch: -{q.wrongPoints !== undefined ? q.wrongPoints : currentRoomWrongPts}] {idx === liveQIndex && '• [LIVE AKTIV]'}</span>
+                      <span className="text-xs text-slate-500">[{q.type === 'mc' ? t.mc : q.type === 'buzzer' ? t.buzzer : t.freetext}] {idx === liveQIndex && '• [LIVE]'}</span>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => setHostPreviewIndex(idx)} className="px-3 py-1 bg-indigo-600 text-white text-xs rounded-lg font-semibold hover:bg-indigo-500">
-                        Ansehen / Vorschau
+                        {t.viewPreview}
                       </button>
                       <button onClick={() => deleteQuestion(q.id)} className="p-1 text-slate-500 hover:text-rose-400"><Trash2 className="w-4 h-4"/></button>
                     </div>
@@ -1078,11 +1350,11 @@ export default function App() {
           </div>
 
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-            <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><UserCheck className="w-5 h-5"/> Spieler Live ({playerList.length})</h2>
+            <h2 className="text-lg font-bold mb-4 text-indigo-400 flex items-center gap-2"><UserCheck className="w-5 h-5"/> {t.playersLive} ({playerList.length})</h2>
 
             <div className="space-y-3">
               {playerList.length === 0 ? (
-                <p className="text-slate-500 text-xs">Noch keine Spieler beigetreten.</p>
+                <p className="text-slate-500 text-xs">{t.noPlayers}</p>
               ) : (
                 playerList.map(p => {
                   const isRevealed = roomData?.revealedPlayers?.[p.name];
@@ -1099,7 +1371,7 @@ export default function App() {
                           )}
                           <div>
                             <p className="font-semibold text-white text-sm">{p.name}</p>
-                            <p className="text-xs text-indigo-400">{p.score} Punkte</p>
+                            <p className="text-xs text-indigo-400">{p.score} Pkt.</p>
                           </div>
                         </div>
                         <div className="flex gap-1.5">
@@ -1111,7 +1383,7 @@ export default function App() {
                       {p.answer !== null && p.answer !== undefined && (
                         <div className="pt-2 mt-2 border-t border-slate-800 flex items-center justify-between text-xs">
                           <div>
-                            <span className="text-slate-500 block">Antwort:</span>
+                            <span className="text-slate-500 block">{t.answerLabel}</span>
                             <span className="text-emerald-300 font-medium">
                               {liveQ?.type === 'mc' ? `Option ${['A','B','C','D'][p.answer]}` : p.answer}
                             </span>
@@ -1122,7 +1394,7 @@ export default function App() {
                               className={`px-2 py-1 rounded text-xs flex items-center gap-1 font-semibold ${isRevealed ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
                             >
                               {isRevealed ? <EyeOff className="w-3 h-3"/> : <Eye className="w-3 h-3"/>}
-                              {isRevealed ? 'Auf TV [Aktiv]' : 'Auf TV zeigen'}
+                              {isRevealed ? t.activeOnTV : t.showOnTV}
                             </button>
                           )}
                         </div>
@@ -1145,22 +1417,24 @@ export default function App() {
     const editStatus = editRequests[playerName];
 
     return (
-      <div className="min-h-screen bg-slate-900 text-white p-4 flex flex-col justify-between">
-        <div className="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
+      <div className="min-h-screen bg-slate-900 text-white p-4 flex flex-col justify-between relative">
+        {renderLanguageSelector()}
+
+        <div className="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700 pt-3">
           <div>
-            <span className="text-xs text-slate-400">Mitspieler</span>
+            <span className="text-xs text-slate-400">{t.mitspieler}</span>
             <p className="font-bold">{playerName}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <span className="text-xs text-slate-400">Raumcode</span>
+              <span className="text-xs text-slate-400">{t.roomCode}</span>
               <p className="font-mono font-bold text-indigo-400">{roomCode}</p>
             </div>
             <button 
               onClick={handleLeavePlayer}
               className="px-3 py-2 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold flex items-center gap-1 hover:bg-rose-600/30"
             >
-              <LogOut className="w-4 h-4" /> Verlassen
+              <LogOut className="w-4 h-4" /> {t.leave}
             </button>
           </div>
         </div>
@@ -1168,7 +1442,7 @@ export default function App() {
         <div className="my-auto space-y-6 text-center">
           {liveQ ? (
             <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 space-y-4">
-              <span className="text-xs text-indigo-400 font-semibold uppercase">Aktuelle Frage</span>
+              <span className="text-xs text-indigo-400 font-semibold uppercase">{t.currentQuestion}</span>
               <p className="text-xl font-bold">{liveQ.text}</p>
 
               {liveQ.type === 'mc' && (
@@ -1198,7 +1472,7 @@ export default function App() {
                     <>
                       <input
                         type="text"
-                        placeholder="Deine Antwort eingeben..."
+                        placeholder="Deine Antwort..."
                         value={playerTextAnswer}
                         onChange={(e) => setPlayerTextAnswer(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500"
@@ -1208,27 +1482,27 @@ export default function App() {
                         disabled={!playerTextAnswer.trim()}
                         className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
                       >
-                        <Send className="w-4 h-4"/> Antwort absenden
+                        <Send className="w-4 h-4"/> {t.submitAnswer}
                       </button>
                     </>
                   ) : (
                     <div className="p-4 bg-slate-900/80 border border-slate-700 rounded-xl space-y-3">
                       <div className="flex items-center justify-between text-xs text-emerald-400 font-semibold">
-                        <span>✓ Antwort eingereicht & gesperrt</span>
+                        <span>{t.answerSubmitted}</span>
                         <Lock className="w-4 h-4 text-emerald-400" />
                       </div>
                       <p className="text-lg font-bold text-white font-mono bg-slate-950 p-2.5 rounded-lg border border-slate-800">{playerObj.answer}</p>
                       
                       {editStatus === 'pending' ? (
-                        <p className="text-xs text-amber-400 animate-pulse">Warte auf Bestätigung des Moderators...</p>
+                        <p className="text-xs text-amber-400 animate-pulse">{t.waitingHostEdit}</p>
                       ) : editStatus === 'rejected' ? (
-                        <p className="text-xs text-rose-400">Korrektur-Anfrage abgelehnt.</p>
+                        <p className="text-xs text-rose-400">{t.editRejected}</p>
                       ) : (
                         <button
                           onClick={handleRequestEdit}
                           className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg font-semibold flex items-center justify-center gap-1 border border-slate-700"
                         >
-                          <Edit3 className="w-3.5 h-3.5" /> Korrektur beim Moderator anfragen
+                          <Edit3 className="w-3.5 h-3.5" /> {t.requestEdit}
                         </button>
                       )}
                     </div>
@@ -1237,7 +1511,7 @@ export default function App() {
               )}
             </div>
           ) : (
-            <p className="text-slate-500">Warte auf die Freigabe der nächsten Frage durch den Moderator...</p>
+            <p className="text-slate-500">{t.waitingHostRelease}</p>
           )}
 
           {liveQ?.type === 'buzzer' && (
@@ -1252,7 +1526,7 @@ export default function App() {
                   : 'bg-rose-600 hover:bg-rose-500 text-white border-b-8 border-rose-800 shadow-2xl'
               }`}
             >
-              {roomData?.buzzedPlayer === playerName ? 'GEBUZZERT!' : roomData?.buzzerLocked ? 'GESPERRT' : roomData?.buzzedPlayer ? 'BLOCKIERT' : 'BUZZER'}
+              {roomData?.buzzedPlayer === playerName ? t.buzzedState : roomData?.buzzerLocked ? t.locked : roomData?.buzzedPlayer ? t.blocked : t.buzzerBtn}
             </button>
           )}
         </div>
@@ -1262,19 +1536,21 @@ export default function App() {
 
   // --- TV VIEW ---
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-8 flex flex-col justify-between">
-      <div className="flex justify-between items-center bg-slate-900 p-6 rounded-2xl border border-slate-800">
-        <h1 className="text-2xl font-black tracking-wider uppercase">QUIZ SHOW</h1>
+    <div className="min-h-screen bg-slate-950 text-white p-8 flex flex-col justify-between relative">
+      {renderLanguageSelector()}
+
+      <div className="flex justify-between items-center bg-slate-900 p-6 rounded-2xl border border-slate-800 pt-4">
+        <h1 className="text-2xl font-black tracking-wider uppercase">{t.appName}</h1>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <span className="text-xs text-slate-500 uppercase block">Raumcode</span>
+            <span className="text-xs text-slate-500 uppercase block">{t.roomCode}</span>
             <span className="font-mono text-2xl font-bold text-indigo-400">{roomCode}</span>
           </div>
           <button 
             onClick={() => setRole(null)}
             className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg border border-slate-700 text-xs flex items-center gap-1"
           >
-            <LogOut className="w-4 h-4" /> Beenden
+            <LogOut className="w-4 h-4" /> {t.leave}
           </button>
         </div>
       </div>
@@ -1283,7 +1559,7 @@ export default function App() {
         {liveQ ? (
           <div className="space-y-6">
             <span className="inline-block px-4 py-1 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-full text-sm font-semibold">
-              {liveQ.points || roomData?.correctPoints || 5} Punkte
+              {liveQ.points || roomData?.correctPoints || 5} Pkt.
             </span>
             <h2 className="text-4xl font-extrabold">{liveQ.text}</h2>
 
@@ -1323,7 +1599,7 @@ export default function App() {
 
             {liveQ.type === 'freetext' && roomData?.revealedAnswer && (
               <div className="p-6 bg-emerald-600/20 border-2 border-emerald-500 rounded-2xl text-emerald-200 text-2xl font-bold inline-block">
-                Musterantwort: {liveQ.correctText || 'Keine Angabe'}
+                {t.modelAnswer} {liveQ.correctText || t.noAnswer}
               </div>
             )}
 
@@ -1332,19 +1608,19 @@ export default function App() {
                 {playerList.filter(p => roomData?.revealedPlayers?.[p.name]).map(p => (
                   <div key={p.name} className="p-4 bg-slate-900 border-2 border-indigo-500 rounded-xl text-left">
                     <span className="text-xs text-indigo-400 font-bold block">{p.name}:</span>
-                    <span className="text-xl font-semibold text-white">{p.answer || 'Keine Antwort'}</span>
+                    <span className="text-xl font-semibold text-white">{p.answer || t.noAnswer}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
         ) : (
-          <p className="text-slate-600 text-xl font-bold">Warte auf die Freigabe der nächsten Frage...</p>
+          <p className="text-slate-600 text-xl font-bold">{t.waitingHostRelease}</p>
         )}
 
         {liveQ?.type === 'buzzer' && roomData?.buzzedPlayer && (
           <div className="p-6 bg-amber-500/20 border-2 border-amber-500 rounded-2xl text-amber-300 text-2xl font-black animate-bounce inline-block">
-            🔔 {roomData.buzzedPlayer} HAT GEBUZZERT!
+            🔔 {roomData.buzzedPlayer} {t.buzzedState}
           </div>
         )}
       </div>
