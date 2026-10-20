@@ -600,61 +600,68 @@ export default function App() {
 
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 p-6 max-w-4xl mx-auto space-y-6">
-        <div className="flex justify-between items-center pb-6 border-b border-slate-800">
-          <div>
-            <span className="text-xs text-indigo-400 font-semibold uppercase">Kollektions-Manager</span>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <FolderPlus className="w-6 h-6 text-indigo-400" /> Neue Fragen-Kollektion erstellen
-            </h1>
-          </div>
-          <button 
-            type="button"
-            onClick={() => setRole(null)}
-            className="px-4 py-2 bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-700"
-          >
-            Abbrechen / Zurück
-          </button>
-        </div>
-
-        {/* Header Name & Punkte-Einstellungen */}
-        <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-4">
-          <h2 className="text-lg font-bold text-indigo-400">1. Kollektions-Details & Punkte-Regel</h2>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Header-Name</label>
-            <input
-              type="text"
-              placeholder="z. B. Allgemeine Wissensfragen Staffel 1"
-              value={collHeader}
-              onChange={(e) => setCollHeader(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-lg font-semibold"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 pt-2">
+        {/* STICKY HEADER OBEN: Beinhaltet Titel, Eingabefelder und den Speicher-Button */}
+        <div className="sticky top-4 z-20 bg-slate-800/95 backdrop-blur-md rounded-2xl p-5 border border-slate-700 shadow-2xl space-y-4">
+          <div className="flex justify-between items-center pb-3 border-b border-slate-700">
             <div>
-              <label className="block text-xs font-semibold text-emerald-400 uppercase mb-1">Punkte für richtige Antwort</label>
+              <span className="text-xs text-indigo-400 font-semibold uppercase">Kollektions-Manager</span>
+              <h1 className="text-xl font-bold flex items-center gap-2">
+                <FolderPlus className="w-5 h-5 text-indigo-400" /> Neue Kollektion erstellen
+              </h1>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                type="button"
+                onClick={handleSaveCollectionToDB}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg flex items-center gap-2 text-sm"
+              >
+                <Check className="w-4 h-4"/> Kollektion speichern ({collQuestions.length} Fragen)
+              </button>
+              <button 
+                type="button"
+                onClick={() => setRole(null)}
+                className="px-3 py-2.5 bg-slate-700 text-slate-300 border border-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-600"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-1">
+              <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Header-Name</label>
+              <input
+                type="text"
+                placeholder="z. B. Allgemeinwissen 1"
+                value={collHeader}
+                onChange={(e) => setCollHeader(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-emerald-400 uppercase mb-1">Punkte (Richtig)</label>
               <input
                 type="number"
                 value={collCorrectPoints}
                 onChange={(e) => setCollCorrectPoints(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-rose-400 uppercase mb-1">Punkte für falsche Antwort (Abzug)</label>
+              <label className="block text-xs font-semibold text-rose-400 uppercase mb-1">Punkte (Falsch / Abzug)</label>
               <input
                 type="number"
                 value={collWrongPoints}
                 onChange={(e) => setCollWrongPoints(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm"
               />
             </div>
           </div>
         </div>
 
-        {/* Frage hinzufügen wie im Moderator */}
+        {/* Frage hinzufügen Formular */}
         <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-4">
-          <h2 className="text-lg font-bold text-indigo-400">2. Fragen hinzufügen ({collQuestions.length} erstellt)</h2>
+          <h2 className="text-lg font-bold text-indigo-400">Frage hinzufügen</h2>
           
           <div className="space-y-4">
             <input
@@ -765,14 +772,6 @@ export default function App() {
                 </div>
               ))}
             </div>
-
-            <button
-              type="button"
-              onClick={handleSaveCollectionToDB}
-              className="w-full mt-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2"
-            >
-              <Check className="w-5 h-5"/> Kollektion unter Header-Namen speichern
-            </button>
           </div>
         )}
       </div>
