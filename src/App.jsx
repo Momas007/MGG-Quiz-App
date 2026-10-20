@@ -21,7 +21,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Übersetzungen (Deutsch mit Österreich 🇦🇹, Englisch 🇬🇧, Serbisch 🇷🇸)
+// Übersetzungen mit PNG-Flaggen aus dem public-Ordner (/at.png, /gb.png, /sr.png)
 const translations = {
   de: {
     appName: "Quiz Show Live",
@@ -703,30 +703,30 @@ export default function App() {
     await update(ref(db), updates);
   };
 
-  // Sprachauswahl-Komponente für oben rechts
+  // Sprachauswahl-Komponente mit PNGs aus dem public-Ordner (/at.png, /gb.png, /sr.png)
   const renderLanguageSelector = () => (
     <div className="absolute top-4 right-4 z-50 flex items-center gap-1.5 bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-xl shadow-lg">
       <Globe className="w-4 h-4 text-indigo-400 mr-1" />
       <button 
         onClick={() => setLang('de')} 
-        className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 ${lang === 'de' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+        className={`px-2 py-1 rounded text-xs font-bold transition flex items-center gap-1.5 ${lang === 'de' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
         title="Deutsch"
       >
-        🇦🇹 DE
+        <img src="/at.png" alt="AT" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> DE
       </button>
       <button 
         onClick={() => setLang('en')} 
-        className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 ${lang === 'en' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+        className={`px-2 py-1 rounded text-xs font-bold transition flex items-center gap-1.5 ${lang === 'en' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
         title="English"
       >
-        🇬🇧 EN
+        <img src="/gb.png" alt="ENG" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> ENG
       </button>
       <button 
         onClick={() => setLang('sr')} 
-        className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 ${lang === 'sr' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+        className={`px-2 py-1 rounded text-xs font-bold transition flex items-center gap-1.5 ${lang === 'sr' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
         title="Srpski"
       >
-        🇷🇸 SR
+        <img src="/sr.png" alt="SRB" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> SRB
       </button>
     </div>
   );
