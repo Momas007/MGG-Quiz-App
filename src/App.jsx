@@ -310,8 +310,14 @@ export default function App() {
       setRoomCode('');
       setInputCode('');
       setPlayerTextAnswer('');
+      setSelectedCollectionKey('');
     }
   }, [role]);
+
+  // Wenn die Sprache gewechselt wird, Auswahl der Kollektion zurücksetzen damit keine falsche geladen bleibt
+  useEffect(() => {
+    setSelectedCollectionKey('');
+  }, [lang]);
 
   // Synchronisierung des lokalen Antwort-Inputs bei Live-Datenänderungen
   useEffect(() => {
@@ -781,11 +787,17 @@ export default function App() {
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white"
                   >
                     <option value="">{t.emptyRoom}</option>
-                    {Object.entries(publicCollections).map(([cKey, cData]) => (
-                      <option key={cKey} value={cKey}>
-                        {cData.header} ({cData.questions?.length || 0} Q | +{cData.correctPoints !== undefined ? cData.correctPoints : 5} / -{cData.wrongPoints !== undefined ? cData.wrongPoints : 1})
-                      </option>
-                    ))}
+                    {Object.entries(publicCollections)
+                      .filter(([_, cData]) => {
+                        // Standardmäßig auf aktuellen Editor-Sprachfilter matchen (Fallback auf 'de' falls Sprache nicht gesetzt)
+                        const collLang = cData.language || 'de';
+                        return collLang === lang;
+                      })
+                      .map(([cKey, cData]) => (
+                        <option key={cKey} value={cKey}>
+                          {cData.header} ({cData.questions?.length || 0} Q | +{cData.correctPoints !== undefined ? cData.correctPoints : 5} / -{cData.wrongPoints !== undefined ? cData.wrongPoints : 1})
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -880,6 +892,7 @@ export default function App() {
 
         await set(ref(db, `collections/${safeKey}`), {
           header: cleanHeader,
+          language: lang, // Speichert die aktuelle Sprache (de, en, sr), damit sie nur bei passender Sprache erscheint
           correctPoints: Number(collCorrectPoints) || 5,
           wrongPoints: Number(collWrongPoints) || 1,
           createdAt: Date.now(),
@@ -904,7 +917,7 @@ export default function App() {
               <div>
                 <span className="text-xs text-indigo-400 font-semibold uppercase">{t.collectionManager}</span>
                 <h1 className="text-xl font-bold flex items-center gap-2">
-                  <FolderPlus className="w-5 h-5 text-indigo-400" /> {t.createCollBtn}
+                  <FolderPlus className="w-5 h-5 text-indigo-400" /> {t.createCollBtn} <span className="text-xs bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded border border-indigo-800/50 uppercase">[{lang}]</span>
                 </h1>
               </div>
               <div className="flex gap-2">
