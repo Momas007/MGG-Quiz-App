@@ -159,7 +159,8 @@ export default function App() {
 
     const finalizedQuestions = loadedQuestions.map(q => ({
       ...q,
-      points: q.points !== undefined ? q.points : cCorrectPts
+      points: q.points !== undefined ? q.points : cCorrectPts,
+      wrongPoints: q.wrongPoints !== undefined ? q.wrongPoints : cWrongPts
     }));
     
     try {
@@ -276,6 +277,13 @@ export default function App() {
   const [newCorrectOption, setNewCorrectOption] = useState(0);
   const [newCorrectText, setNewCorrectText] = useState('');
   const [newPoints, setNewPoints] = useState(5);
+  const [newWrongPoints, setNewWrongPoints] = useState(1);
+
+  // Aktualisiere Standard-Werte für neue Fragen basierend auf dem Raum-Status
+  useEffect(() => {
+    if (roomData?.correctPoints !== undefined) setNewPoints(roomData.correctPoints);
+    if (roomData?.wrongPoints !== undefined) setNewWrongPoints(roomData.wrongPoints);
+  }, [roomData?.correctPoints, roomData?.wrongPoints]);
 
   const addQuestion = async (e) => {
     e.preventDefault();
@@ -289,7 +297,8 @@ export default function App() {
       options: newQuestionType === 'mc' ? [...newOptions] : [],
       correctOption: newQuestionType === 'mc' ? newCorrectOption : null,
       correctText: newQuestionType === 'freetext' ? newCorrectText : '',
-      points: Number(newPoints) || 5
+      points: Number(newPoints) || 5,
+      wrongPoints: Number(newWrongPoints) || 1
     };
 
     const updatedQuestions = [...currentQuestions, newQ];
@@ -343,8 +352,8 @@ export default function App() {
     const currentQuestions = roomData?.questions || [];
     const qIndex = roomData?.currentQuestionIndex ?? -1;
     const currentQ = qIndex >= 0 ? currentQuestions[qIndex] : null;
-    const pts = currentQ ? currentQ.points : (roomData?.correctPoints || 5);
-    const wrongPts = roomData?.wrongPoints !== undefined ? roomData.wrongPoints : 1;
+    const pts = currentQ?.points !== undefined ? currentQ.points : (roomData?.correctPoints || 5);
+    const wrongPts = currentQ?.wrongPoints !== undefined ? currentQ.wrongPoints : (roomData?.wrongPoints || 1);
     const currentScore = roomData?.players?.[bPlayer]?.score || 0;
     const newScore = isCorrect ? currentScore + pts : currentScore - wrongPts;
 
@@ -653,7 +662,7 @@ export default function App() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-emerald-400 uppercase mb-1">Punkte (Richtig)</label>
+              <label className="block text-xs font-semibold text-emerald-400 uppercase mb-1">Standard Punkte (Richtig)</label>
               <input
                 type="number"
                 value={collCorrectPoints}
@@ -662,7 +671,7 @@ export default function App() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-rose-400 uppercase mb-1">Punkte (Falsch / Abzug)</label>
+              <label className="block text-xs font-semibold text-rose-400 uppercase mb-1">Standard Abzug (Falsch)</label>
               <input
                 type="number"
                 value={collWrongPoints}
@@ -686,16 +695,37 @@ export default function App() {
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
             />
             
-            <div className="grid grid-cols-2 gap-4">
-              <select
-                value={newCollQType}
-                onChange={(e) => setNewCollQType(e.target.value)}
-                className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
-              >
-                <option value="mc">Multiple Choice (A, B, C, D)</option>
-                <option value="buzzer">Schnell-Buzzer</option>
-                <option value="freetext">Freitext-Antwort</option>
-              </select>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-1">
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Fragetyp</label>
+                <select
+                  value={newCollQType}
+                  onChange={(e) => setNewCollQType(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
+                >
+                  <option value="mc">Multiple Choice</option>
+                  <option value="buzzer">Schnell-Buzzer</option>
+                  <option value="freetext">Freitext-Antwort</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-emerald-400 mb-1">Punkte (+)</label>
+                <input
+                  type="number"
+                  value={collCorrectPoints}
+                  onChange={(e) => setCollCorrectPoints(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-rose-400 mb-1">Abzug (-)</label>
+                <input
+                  type="number"
+                  value={collWrongPoints}
+                  onChange={(e) => setCollWrongPoints(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
+                />
+              </div>
             </div>
 
             {newCollQType === 'freetext' && (
@@ -749,7 +779,8 @@ export default function App() {
                   options: newCollQType === 'mc' ? [...newCollQOptions] : [],
                   correctOption: newCollQType === 'mc' ? newCollQCorrectOpt : null,
                   correctText: newCollQType === 'freetext' ? newCollQCorrectText : '',
-                  points: Number(collCorrectPoints) || 5
+                  points: Number(collCorrectPoints) || 5,
+                  wrongPoints: Number(collWrongPoints) || 1
                 };
                 setCollQuestions([...collQuestions, newQ]);
                 setNewCollQText('');
@@ -772,7 +803,7 @@ export default function App() {
                 <div key={q.id} className="p-3 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-between text-sm">
                   <div>
                     <p className="text-white font-medium">{idx + 1}. {q.text}</p>
-                    <span className="text-xs text-slate-500">[{q.type === 'mc' ? 'Multiple Choice' : q.type === 'buzzer' ? 'Buzzer' : 'Freitext'} | {q.points} Pkt.]</span>
+                    <span className="text-xs text-slate-500">[{q.type === 'mc' ? 'Multiple Choice' : q.type === 'buzzer' ? 'Buzzer' : 'Freitext'} | Richtig: +{q.points} / Falsch: -{q.wrongPoints}]</span>
                   </div>
                   <button
                     type="button"
@@ -886,7 +917,7 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-700">
                     <span className="text-xs text-indigo-400 font-semibold uppercase block mb-1">
-                      Typ: {previewQ.type === 'mc' ? 'Multiple Choice' : previewQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'} | Richtig: +{previewQ.points || currentRoomCorrectPts} / Falsch: -{currentRoomWrongPts} Pkt.
+                      Typ: {previewQ.type === 'mc' ? 'Multiple Choice' : previewQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'} | Richtig: +{previewQ.points || currentRoomCorrectPts} / Falsch: -{previewQ.wrongPoints !== undefined ? previewQ.wrongPoints : currentRoomWrongPts} Pkt.
                     </span>
                     <p className="text-xl font-semibold text-white">{previewQ.text}</p>
 
@@ -933,7 +964,7 @@ export default function App() {
                                 <Check className="w-5 h-5"/> Richtig (+{liveQ?.points || currentRoomCorrectPts} Pkt.)
                               </button>
                               <button onClick={() => handleEvaluateBuzzer(false)} className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
-                                <X className="w-5 h-5"/> Falsch (-{currentRoomWrongPts} Pkt.)
+                                <X className="w-5 h-5"/> Falsch (-{liveQ?.wrongPoints !== undefined ? liveQ.wrongPoints : currentRoomWrongPts} Pkt.)
                               </button>
                             </div>
                           )}
@@ -963,23 +994,40 @@ export default function App() {
                   onChange={(e) => setNewQuestionText(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
                 />
-                <div className="grid grid-cols-2 gap-4">
-                  <select
-                    value={newQuestionType}
-                    onChange={(e) => setNewQuestionType(e.target.value)}
-                    className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white"
-                  >
-                    <option value="mc">Multiple Choice (A, B, C, D)</option>
-                    <option value="buzzer">Schnell-Buzzer</option>
-                    <option value="freetext">Freitext-Antwort</option>
-                  </select>
-                  <input
-                    type="number"
-                    value={newPoints}
-                    onChange={(e) => setNewPoints(e.target.value)}
-                    className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white"
-                    placeholder="Punkte"
-                  />
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Typ</label>
+                    <select
+                      value={newQuestionType}
+                      onChange={(e) => setNewQuestionType(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
+                    >
+                      <option value="mc">Multiple Choice</option>
+                      <option value="buzzer">Schnell-Buzzer</option>
+                      <option value="freetext">Freitext-Antwort</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-emerald-400 mb-1">Punkte (+)</label>
+                    <input
+                      type="number"
+                      value={newPoints}
+                      onChange={(e) => setNewPoints(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
+                      placeholder="Punkte"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-rose-400 mb-1">Abzug (-)</label>
+                    <input
+                      type="number"
+                      value={newWrongPoints}
+                      onChange={(e) => setNewWrongPoints(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
+                      placeholder="Abzug"
+                    />
+                  </div>
                 </div>
 
                 {newQuestionType === 'freetext' && (
@@ -1035,7 +1083,7 @@ export default function App() {
                   <div key={q.id} className={`p-3 rounded-xl border flex items-center justify-between ${idx === liveQIndex ? 'bg-emerald-950/30 border-emerald-500' : idx === hostPreviewIndex ? 'bg-indigo-900/30 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
                     <div>
                       <p className="text-sm text-white truncate">{idx + 1}. {q.text}</p>
-                      <span className="text-xs text-slate-500">[{q.type === 'mc' ? 'Multiple Choice' : q.type === 'buzzer' ? 'Buzzer' : 'Freitext'}] {idx === liveQIndex && '• [LIVE AKTIV]'}</span>
+                      <span className="text-xs text-slate-500">[{q.type === 'mc' ? 'Multiple Choice' : q.type === 'buzzer' ? 'Buzzer' : 'Freitext'} | Richtig: +{q.points || currentRoomCorrectPts} / Falsch: -{q.wrongPoints !== undefined ? q.wrongPoints : currentRoomWrongPts}] {idx === liveQIndex && '• [LIVE AKTIV]'}</span>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => setHostPreviewIndex(idx)} className="px-3 py-1 bg-indigo-600 text-white text-xs rounded-lg font-semibold hover:bg-indigo-500">
@@ -1059,6 +1107,7 @@ export default function App() {
                 playerList.map(p => {
                   const isRevealed = roomData?.revealedPlayers?.[p.name];
                   const qPts = liveQ?.points || currentRoomCorrectPts;
+                  const qWrongPts = liveQ?.wrongPoints !== undefined ? liveQ.wrongPoints : currentRoomWrongPts;
                   return (
                     <div key={p.name} className={`p-3 rounded-xl border transition ${p.selected ? 'bg-indigo-950/40 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
                       <div className="flex justify-between items-center">
@@ -1075,7 +1124,7 @@ export default function App() {
                         </div>
                         <div className="flex gap-1.5">
                           <button onClick={() => handleAwardPoints(p.name, qPts)} className="px-2.5 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold hover:bg-emerald-600/30">+{qPts}</button>
-                          <button onClick={() => handleAwardPoints(p.name, -currentRoomWrongPts)} className="px-2.5 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-bold hover:bg-rose-600/30">-{currentRoomWrongPts}</button>
+                          <button onClick={() => handleAwardPoints(p.name, -qWrongPts)} className="px-2.5 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-bold hover:bg-rose-600/30">-{qWrongPts}</button>
                         </div>
                       </div>
 
