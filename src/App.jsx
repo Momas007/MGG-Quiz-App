@@ -32,6 +32,8 @@ export default function App() {
 
   // Kollektion Erstellungs State
   const [collHeader, setCollHeader] = useState('');
+  const [collCorrectPoints, setCollCorrectPoints] = useState(100);
+  const [collWrongPoints, setCollWrongPoints] = useState(50);
   const [collQuestions, setCollQuestions] = useState([]);
   const [publicCollections, setPublicCollections] = useState({});
   const [selectedCollectionKey, setSelectedCollectionKey] = useState('');
@@ -42,7 +44,6 @@ export default function App() {
   const [newCollQOptions, setNewCollQOptions] = useState(['', '', '', '']);
   const [newCollQCorrectOpt, setNewCollQCorrectOpt] = useState(0);
   const [newCollQCorrectText, setNewCollQCorrectText] = useState('');
-  const [newCollQPoints, setNewCollQPoints] = useState(100);
 
   // Lokaler Moderator Preview Index
   const [hostPreviewIndex, setHostPreviewIndex] = useState(0);
@@ -486,7 +487,7 @@ export default function App() {
                     <option value="">--- Leerer Raum (Keine Kollektion / Reset) ---</option>
                     {Object.entries(publicCollections).map(([cKey, cData]) => (
                       <option key={cKey} value={cKey}>
-                        {cData.header} ({cData.questions?.length || 0} Fragen)
+                        {cData.header} ({cData.questions?.length || 0} Fragen | +{cData.correctPoints || 100} / -{cData.wrongPoints || 50})
                       </option>
                     ))}
                   </select>
@@ -506,6 +507,8 @@ export default function App() {
                   onClick={() => {
                     setRole('collection_creator');
                     setCollHeader('');
+                    setCollCorrectPoints(100);
+                    setCollWrongPoints(50);
                     setCollQuestions([]);
                   }}
                   className="text-xs text-indigo-400 hover:underline flex items-center justify-center gap-1 mx-auto font-medium"
@@ -577,11 +580,12 @@ export default function App() {
       }
 
       try {
-        // Firebase-Schlüssel bereinigen, falls ungültige Zeichen im Header sind (z.B. '.', '#', '\$', '[', ']')
         const safeKey = cleanHeader.replace(/[.#\$[\]]/g, '_');
 
         await set(ref(db, `collections/${safeKey}`), {
           header: cleanHeader,
+          correctPoints: Number(collCorrectPoints) || 100,
+          wrongPoints: Number(collWrongPoints) || 50,
           createdAt: Date.now(),
           questions: collQuestions
         });
@@ -612,16 +616,40 @@ export default function App() {
           </button>
         </div>
 
-        {/* Header Name eingeben */}
+        {/* Header Name & Punkte-Einstellungen */}
         <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-4">
-          <h2 className="text-lg font-bold text-indigo-400">1. Header-Name der Kollektion</h2>
-          <input
-            type="text"
-            placeholder="z. B. Allgemeine Wissensfragen Staffel 1"
-            value={collHeader}
-            onChange={(e) => setCollHeader(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-lg font-semibold"
-          />
+          <h2 className="text-lg font-bold text-indigo-400">1. Kollektions-Details & Punkte-Regel</h2>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Header-Name</label>
+            <input
+              type="text"
+              placeholder="z. B. Allgemeine Wissensfragen Staffel 1"
+              value={collHeader}
+              onChange={(e) => setCollHeader(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-lg font-semibold"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <div>
+              <label className="block text-xs font-semibold text-emerald-400 uppercase mb-1">Punkte für richtige Antwort</label>
+              <input
+                type="number"
+                value={collCorrectPoints}
+                onChange={(e) => setCollCorrectPoints(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-rose-400 uppercase mb-1">Punkte für falsche Antwort (Abzug)</label>
+              <input
+                type="number"
+                value={collWrongPoints}
+                onChange={(e) => setCollWrongPoints(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-white"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Frage hinzufügen wie im Moderator */}
@@ -647,13 +675,6 @@ export default function App() {
                 <option value="buzzer">Schnell-Buzzer</option>
                 <option value="freetext">Freitext-Antwort</option>
               </select>
-              <input
-                type="number"
-                value={newCollQPoints}
-                onChange={(e) => setNewCollQPoints(Number(e.target.value))}
-                className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-sm"
-                placeholder="Punkte"
-              />
             </div>
 
             {newCollQType === 'freetext' && (
@@ -707,7 +728,7 @@ export default function App() {
                   options: newCollQType === 'mc' ? [...newCollQOptions] : [],
                   correctOption: newCollQType === 'mc' ? newCollQCorrectOpt : null,
                   correctText: newCollQType === 'freetext' ? newCollQCorrectText : '',
-                  points: Number(newCollQPoints) || 100
+                  points: Number(collCorrectPoints) || 100
                 };
                 setCollQuestions([...collQuestions, newQ]);
                 setNewCollQText('');
