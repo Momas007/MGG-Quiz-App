@@ -30,7 +30,7 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [playerTextAnswer, setPlayerTextAnswer] = useState('');
 
-  // Kollektion Erstellungs State (Neuer Standard: +5 und -1)
+  // Kollektion Erstellungs State (Standard: +5 und -1)
   const [collHeader, setCollHeader] = useState('');
   const [collCorrectPoints, setCollCorrectPoints] = useState(5);
   const [collWrongPoints, setCollWrongPoints] = useState(1);
@@ -157,7 +157,6 @@ export default function App() {
       if (colData.wrongPoints !== undefined) cWrongPts = Number(colData.wrongPoints);
     }
 
-    // Standard-Punkte der Fragen aus der Kollektion auf die spezifischen Punkte anpassen
     const finalizedQuestions = loadedQuestions.map(q => ({
       ...q,
       points: q.points !== undefined ? q.points : cCorrectPts
@@ -406,7 +405,7 @@ export default function App() {
 
   const handleAwardPoints = async (pName, pts) => {
     if (!roomData?.players?.[pName]) return;
-    playSound('correct');
+    if (pts > 0) playSound('correct');
     const currentScore = roomData.players[pName].score || 0;
     await update(ref(db, `rooms/${roomCode}/players/${pName}`), {
       score: currentScore + pts
@@ -887,7 +886,7 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-700">
                     <span className="text-xs text-indigo-400 font-semibold uppercase block mb-1">
-                      Typ: {previewQ.type === 'mc' ? 'Multiple Choice' : previewQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'} | {previewQ.points || currentRoomCorrectPts} Punkte
+                      Typ: {previewQ.type === 'mc' ? 'Multiple Choice' : previewQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'} | Richtig: +{previewQ.points || currentRoomCorrectPts} / Falsch: -{currentRoomWrongPts} Pkt.
                     </span>
                     <p className="text-xl font-semibold text-white">{previewQ.text}</p>
 
@@ -1074,9 +1073,9 @@ export default function App() {
                             <p className="text-xs text-indigo-400">{p.score} Punkte</p>
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <button onClick={() => handleAwardPoints(p.name, qPts)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{qPts}</button>
-                          <button onClick={() => handleAwardPoints(p.name, -currentRoomWrongPts)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-{currentRoomWrongPts}</button>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => handleAwardPoints(p.name, qPts)} className="px-2.5 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold hover:bg-emerald-600/30">+{qPts}</button>
+                          <button onClick={() => handleAwardPoints(p.name, -currentRoomWrongPts)} className="px-2.5 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-bold hover:bg-rose-600/30">-{currentRoomWrongPts}</button>
                         </div>
                       </div>
 
