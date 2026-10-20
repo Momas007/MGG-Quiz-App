@@ -622,9 +622,9 @@ export default function App() {
     };
 
     return (
-      <div className="min-h-screen bg-slate-900 text-slate-100 p-6 max-w-4xl mx-auto space-y-6">
+      <div className="min-h-screen w-full bg-slate-900 text-slate-100 p-6 space-y-6">
         {/* STICKY HEADER OBEN */}
-        <div className="sticky top-4 z-20 bg-slate-800/95 backdrop-blur-md rounded-2xl p-5 border border-slate-700 shadow-2xl space-y-4">
+        <div className="sticky top-0 z-20 bg-slate-800/95 backdrop-blur-md rounded-2xl p-5 border border-slate-700 shadow-2xl space-y-4">
           <div className="flex justify-between items-center pb-3 border-b border-slate-700">
             <div>
               <span className="text-xs text-indigo-400 font-semibold uppercase">Kollektions-Manager</span>
