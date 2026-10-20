@@ -30,10 +30,10 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [playerTextAnswer, setPlayerTextAnswer] = useState('');
 
-  // Kollektion Erstellungs State
+  // Kollektion Erstellungs State (Neuer Standard: +5 und -1)
   const [collHeader, setCollHeader] = useState('');
-  const [collCorrectPoints, setCollCorrectPoints] = useState(100);
-  const [collWrongPoints, setCollWrongPoints] = useState(50);
+  const [collCorrectPoints, setCollCorrectPoints] = useState(5);
+  const [collWrongPoints, setCollWrongPoints] = useState(1);
   const [collQuestions, setCollQuestions] = useState([]);
   const [publicCollections, setPublicCollections] = useState({});
   const [selectedCollectionKey, setSelectedCollectionKey] = useState('');
@@ -140,23 +140,37 @@ export default function App() {
     return code;
   };
 
-  // Raum Erstellen (Als Moderator)
+  // Raum Erstellen (Als Moderator) - Übernimmt Kollektions-Punkte falls vorhanden
   const handleCreateRoom = async (e) => {
     if (e) e.preventDefault();
     if (!playerName.trim()) return;
     const newCode = generateCode();
     
     let loadedQuestions = [];
+    let cCorrectPts = 5;
+    let cWrongPts = 1;
+
     if (selectedCollectionKey && publicCollections[selectedCollectionKey]) {
-      loadedQuestions = publicCollections[selectedCollectionKey].questions || [];
+      const colData = publicCollections[selectedCollectionKey];
+      loadedQuestions = colData.questions || [];
+      if (colData.correctPoints !== undefined) cCorrectPts = Number(colData.correctPoints);
+      if (colData.wrongPoints !== undefined) cWrongPts = Number(colData.wrongPoints);
     }
+
+    // Standard-Punkte der Fragen aus der Kollektion auf die spezifischen Punkte anpassen
+    const finalizedQuestions = loadedQuestions.map(q => ({
+      ...q,
+      points: q.points !== undefined ? q.points : cCorrectPts
+    }));
     
     try {
       await set(ref(db, `rooms/${newCode}`), {
         host: playerName.trim(),
         createdAt: Date.now(),
         currentQuestionIndex: -1,
-        questions: loadedQuestions,
+        questions: finalizedQuestions,
+        correctPoints: cCorrectPts,
+        wrongPoints: cWrongPts,
         players: {},
         buzzedPlayer: null,
         buzzerLocked: false,
@@ -262,7 +276,7 @@ export default function App() {
   const [newOptions, setNewOptions] = useState(['', '', '', '']);
   const [newCorrectOption, setNewCorrectOption] = useState(0);
   const [newCorrectText, setNewCorrectText] = useState('');
-  const [newPoints, setNewPoints] = useState(100);
+  const [newPoints, setNewPoints] = useState(5);
 
   const addQuestion = async (e) => {
     e.preventDefault();
@@ -276,7 +290,7 @@ export default function App() {
       options: newQuestionType === 'mc' ? [...newOptions] : [],
       correctOption: newQuestionType === 'mc' ? newCorrectOption : null,
       correctText: newQuestionType === 'freetext' ? newCorrectText : '',
-      points: Number(newPoints) || 100
+      points: Number(newPoints) || 5
     };
 
     const updatedQuestions = [...currentQuestions, newQ];
@@ -330,9 +344,10 @@ export default function App() {
     const currentQuestions = roomData?.questions || [];
     const qIndex = roomData?.currentQuestionIndex ?? -1;
     const currentQ = qIndex >= 0 ? currentQuestions[qIndex] : null;
-    const pts = currentQ ? currentQ.points : 100;
+    const pts = currentQ ? currentQ.points : (roomData?.correctPoints || 5);
+    const wrongPts = roomData?.wrongPoints !== undefined ? roomData.wrongPoints : 1;
     const currentScore = roomData?.players?.[bPlayer]?.score || 0;
-    const newScore = isCorrect ? currentScore + pts : currentScore - Math.round(pts / 2);
+    const newScore = isCorrect ? currentScore + pts : currentScore - wrongPts;
 
     if (isCorrect) playSound('correct');
 
@@ -409,7 +424,7 @@ export default function App() {
     };
 
     if (nextRevealed && currentQ && currentQ.type === 'mc') {
-      const pts = currentQ.points || 100;
+      const pts = currentQ.points || roomData?.correctPoints || 5;
       const targetOpt = currentQ.correctOption;
 
       if (roomData?.players) {
@@ -423,7 +438,7 @@ export default function App() {
     }
 
     if (nextRevealed && currentQ && currentQ.type === 'freetext') {
-      const pts = currentQ.points || 100;
+      const pts = currentQ.points || roomData?.correctPoints || 5;
       if (roomData?.players) {
         Object.values(roomData.players).forEach(p => {
           if (p.selected) {
@@ -484,10 +499,10 @@ export default function App() {
                     onChange={(e) => setSelectedCollectionKey(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white"
                   >
-                    <option value="">--- Leerer Raum (Keine Kollektion / Reset) ---</option>
+                    <option value="">--- Leerer Raum (Standard: +5 / -1) ---</option>
                     {Object.entries(publicCollections).map(([cKey, cData]) => (
                       <option key={cKey} value={cKey}>
-                        {cData.header} ({cData.questions?.length || 0} Fragen | +{cData.correctPoints || 100} / -{cData.wrongPoints || 50})
+                        {cData.header} ({cData.questions?.length || 0} Fragen | +{cData.correctPoints !== undefined ? cData.correctPoints : 5} / -{cData.wrongPoints !== undefined ? cData.wrongPoints : 1})
                       </option>
                     ))}
                   </select>
@@ -507,8 +522,8 @@ export default function App() {
                   onClick={() => {
                     setRole('collection_creator');
                     setCollHeader('');
-                    setCollCorrectPoints(100);
-                    setCollWrongPoints(50);
+                    setCollCorrectPoints(5);
+                    setCollWrongPoints(1);
                     setCollQuestions([]);
                   }}
                   className="text-xs text-indigo-400 hover:underline flex items-center justify-center gap-1 mx-auto font-medium"
@@ -584,8 +599,8 @@ export default function App() {
 
         await set(ref(db, `collections/${safeKey}`), {
           header: cleanHeader,
-          correctPoints: Number(collCorrectPoints) || 100,
-          wrongPoints: Number(collWrongPoints) || 50,
+          correctPoints: Number(collCorrectPoints) || 5,
+          wrongPoints: Number(collWrongPoints) || 1,
           createdAt: Date.now(),
           questions: collQuestions
         });
@@ -600,7 +615,7 @@ export default function App() {
 
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 p-6 max-w-4xl mx-auto space-y-6">
-        {/* STICKY HEADER OBEN: Beinhaltet Titel, Eingabefelder und den Speicher-Button */}
+        {/* STICKY HEADER OBEN */}
         <div className="sticky top-4 z-20 bg-slate-800/95 backdrop-blur-md rounded-2xl p-5 border border-slate-700 shadow-2xl space-y-4">
           <div className="flex justify-between items-center pb-3 border-b border-slate-700">
             <div>
@@ -735,7 +750,7 @@ export default function App() {
                   options: newCollQType === 'mc' ? [...newCollQOptions] : [],
                   correctOption: newCollQType === 'mc' ? newCollQCorrectOpt : null,
                   correctText: newCollQType === 'freetext' ? newCollQCorrectText : '',
-                  points: Number(collCorrectPoints) || 100
+                  points: Number(collCorrectPoints) || 5
                 };
                 setCollQuestions([...collQuestions, newQ]);
                 setNewCollQText('');
@@ -790,6 +805,9 @@ export default function App() {
 
   // --- MODERATOR VIEW ---
   if (role === 'host') {
+    const currentRoomCorrectPts = roomData?.correctPoints !== undefined ? roomData.correctPoints : 5;
+    const currentRoomWrongPts = roomData?.wrongPoints !== undefined ? roomData.wrongPoints : 1;
+
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 p-6">
         <div className="flex justify-between items-center pb-6 border-b border-slate-800 mb-6">
@@ -869,7 +887,7 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-700">
                     <span className="text-xs text-indigo-400 font-semibold uppercase block mb-1">
-                      Typ: {previewQ.type === 'mc' ? 'Multiple Choice' : previewQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'} | {previewQ.points} Punkte
+                      Typ: {previewQ.type === 'mc' ? 'Multiple Choice' : previewQ.type === 'buzzer' ? 'Schnell-Buzzer' : 'Freitext'} | {previewQ.points || currentRoomCorrectPts} Punkte
                     </span>
                     <p className="text-xl font-semibold text-white">{previewQ.text}</p>
 
@@ -913,10 +931,10 @@ export default function App() {
                           {roomData?.buzzedPlayer && (
                             <div className="flex gap-2 pt-1">
                               <button onClick={() => handleEvaluateBuzzer(true)} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
-                                <Check className="w-5 h-5"/> Richtig (+{liveQ.points} Pkt.)
+                                <Check className="w-5 h-5"/> Richtig (+{liveQ?.points || currentRoomCorrectPts} Pkt.)
                               </button>
                               <button onClick={() => handleEvaluateBuzzer(false)} className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl flex items-center justify-center gap-2">
-                                <X className="w-5 h-5"/> Falsch (-{Math.round(liveQ.points / 2)} Pkt.)
+                                <X className="w-5 h-5"/> Falsch (-{currentRoomWrongPts} Pkt.)
                               </button>
                             </div>
                           )}
@@ -1041,6 +1059,7 @@ export default function App() {
               ) : (
                 playerList.map(p => {
                   const isRevealed = roomData?.revealedPlayers?.[p.name];
+                  const qPts = liveQ?.points || currentRoomCorrectPts;
                   return (
                     <div key={p.name} className={`p-3 rounded-xl border transition ${p.selected ? 'bg-indigo-950/40 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
                       <div className="flex justify-between items-center">
@@ -1056,8 +1075,8 @@ export default function App() {
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          <button onClick={() => handleAwardPoints(p.name, liveQ ? liveQ.points : 100)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{liveQ ? liveQ.points : 100}</button>
-                          <button onClick={() => handleAwardPoints(p.name, -50)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-50</button>
+                          <button onClick={() => handleAwardPoints(p.name, qPts)} className="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded text-xs font-bold">+{qPts}</button>
+                          <button onClick={() => handleAwardPoints(p.name, -currentRoomWrongPts)} className="px-2 py-1 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded text-xs font-bold">-{currentRoomWrongPts}</button>
                         </div>
                       </div>
 
@@ -1236,7 +1255,7 @@ export default function App() {
         {liveQ ? (
           <div className="space-y-6">
             <span className="inline-block px-4 py-1 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-full text-sm font-semibold">
-              {liveQ.points} Punkte
+              {liveQ.points || roomData?.correctPoints || 5} Punkte
             </span>
             <h2 className="text-4xl font-extrabold">{liveQ.text}</h2>
 
