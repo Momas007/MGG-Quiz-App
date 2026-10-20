@@ -594,7 +594,7 @@ export default function App() {
     const handleSaveCollectionToDB = async () => {
       const cleanHeader = collHeader.trim();
       if (!cleanHeader) {
-        alert('Bitte gib zuerst einen Header-Namen für die Kollektion ein.');
+        alert('Bitte gib zuerst einen Kollektionsnamen ein.');
         return;
       }
       if (collQuestions.length === 0) {
@@ -624,7 +624,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 p-6 flex justify-center">
         <div className="w-full max-w-3xl space-y-6">
-          {/* HEADER & GLOBALE EINSTELLUNGEN */}
+          {/* KOLLEKTIONS-NAME & GLOBALE EINSTELLUNGEN */}
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-2xl space-y-4">
             <div className="flex justify-between items-center pb-3 border-b border-slate-700">
               <div>
@@ -653,7 +653,7 @@ export default function App() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-1">
-                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Header-Name</label>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Kollektionsname</label>
                 <input
                   type="text"
                   placeholder="z. B. Allgemeinwissen 1"
