@@ -21,7 +21,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Übersetzungen inkl. Schwäbisch (sw) und Sächsisch (sx)
+// Übersetzungen
 const translations = {
   de: {
     appName: "Quiz Show Live",
@@ -472,7 +472,6 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [playerTextAnswer, setPlayerTextAnswer] = useState('');
   
-  // Passwort-Abfrage Modal State
   const [pendingCollectionKey, setPendingCollectionKey] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [roomPasswordInput, setRoomPasswordInput] = useState('');
@@ -618,7 +617,6 @@ export default function App() {
     executeCreateRoom(selectedCollectionKey);
   };
 
-  // Passwort bestätigen und direkt Raum erstellen
   const handleVerifyPasswordAndCreate = (e) => {
     e.preventDefault();
     const colData = publicCollections[pendingCollectionKey];
@@ -630,7 +628,7 @@ export default function App() {
     }
   };
 
-  // Eigentliche Raumerstellung in Firebase
+  // Raumerstellung mit integrierter Fehler-Protokollierung
   const executeCreateRoom = async (colKey) => {
     const newCode = generateCode();
     
@@ -672,7 +670,9 @@ export default function App() {
       setHostPreviewIndex(0);
       setErrorMessage('');
     } catch (err) {
-      setErrorMessage(t.errCreate);
+      console.error("Firebase Fehler beim Erstellen des Raums:", err);
+      alert("Fehler beim Erstellen des Raums: " + err.message);
+      setErrorMessage(t.errCreate + ": " + err.message);
     }
   };
 
@@ -1002,7 +1002,6 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
         {renderLanguageSelector()}
 
-        {/* Passwort-Abfrage Modal */}
         {showPasswordModal && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
