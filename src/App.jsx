@@ -21,7 +21,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Übersetzungen inkl. Sächsisch (sx) und Flaggen aus dem public-Ordner (/at.png, /gb.png, /sr.png, /sx.png)
+// Übersetzungen inkl. Schwäbisch (sw) und Sächsisch (sx) sowie Flaggen aus dem public-Ordner
 const translations = {
   de: {
     appName: "Quiz Show Live",
@@ -156,7 +156,7 @@ const translations = {
     wrong: "Wrong",
     hideAnswer: "Hide Answer",
     revealAnswer: "Reveal Answer (Auto Points)",
-    createNewQuestion: "Create New Question",
+    createNewQuestion: "New Question",
     saveQuestion: "Save Question",
     createdQuestions: "Created Questions",
     viewPreview: "View / Preview",
@@ -260,6 +260,85 @@ const translations = {
     modelAnswer: "Tačan odgovor:",
     noAnswer: "Nema odgovora"
   },
+  sw: {
+    appName: "Guiz Schou Live",
+    appSub: "Scopes Quiz für di ond deine Kumpels",
+    yourName: "Dein Name",
+    namePlaceholder: "z. B. Sepp",
+    hostRoom: "Als Schiri Zimmer uffmacha",
+    selectCollection: "Fraga-Sammlong auswähla",
+    emptyRoom: "--- Leeres Zimmer (Standard: +5 / -1) ---",
+    createRoomBtn: "Zimmer mit ausgewählter Sammlong uffmacha",
+    createCollBtn: "Neie Fraga-Sammlong macha",
+    joinRoom: "In a Zimmer naika / Hot-Join",
+    roomCodePlaceholder: "5-stelliger Code",
+    joinBtn: "Zimmer betreda",
+    tvBtn: "TV / Discord Ansicht",
+    roomClosed: "Das Zimmer isch zuagschlossa worra.",
+    roomNotExist: "Des Zimmer geit s it!",
+    errCreate: "Fehler beim Zimmer-Erschtella.",
+    errNoName: "Bitte giberscht an Sammlongsnama ei.",
+    errNoQ: "Bitte mach mindeschtens oine Fraga dazu.",
+    saveSuccess: "Sammlong erfolgreich in dr Databank gschpeichrat!",
+    collectionManager: "Sammlongs-Manager",
+    saveCollection: "Sammlong schpeichra",
+    cancel: "Abbrächa",
+    collectionName: "Sammlongsname",
+    collNamePlaceholder: "z. B. Allgemeinwissen 1",
+    defaultCorrect: "Standard Pünkt (+)",
+    defaultWrong: "Standard Abzug (-)",
+    addQuestion: "Fraga drzua",
+    questionTextPlaceholder: "Fragatext neiipuffa...",
+    questionType: "Fragatyp",
+    mc: "Multiple Choice",
+    buzzer: "Gschnell-Buzzer",
+    freetext: "Freitext-Antwort",
+    correctAnswerText: "Musterantwort / Rischdige Lösung",
+    addQToColl: "Fraga zur Sammlong dazu",
+    includedQuestions: "Enthaldene Fraga",
+    moderatorControl: "Schiri-Kontroll",
+    roomCode: "Zimmerecode",
+    closeAndDelete: "Zimmer zuamacha & löascha",
+    editRequestMsg: "will sei Freitext-Antwort korrigiara. Erlauba?",
+    allow: "Jo, mach",
+    deny: "Nix da",
+    modPreview: "Schiri Vorschau",
+    live: "LÄIV",
+    previewOnly: "Blos Vorschau",
+    prev: "Vorherige",
+    next: "Näggschte",
+    releaseLive: "Des Fraga-Stück jetzt für ALLE FREIGÄBFA & LÄIV SCHALDA",
+    waitingBuzzer: "Wartet uff Buzzer...",
+    resetBuzzer: "Buzzer zruggsetza",
+    correct: "Rischdisch",
+    wrong: "Falsch",
+    hideAnswer: "Antwort verstecka",
+    revealAnswer: "Antwort uffmacha (Auto-Pünkt)",
+    createNewQuestion: "Neie Fraga macha",
+    saveQuestion: "Fraga schpeichra",
+    createdQuestions: "Erschtellte Fraga",
+    viewPreview: "Aasacha / Vorschau",
+    playersLive: "Spiiler Läiv",
+    noPlayers: "No koiner drbei.",
+    answerLabel: "Antwort:",
+    showOnTV: "Uffm TV zoiga",
+    activeOnTV: "Uffm TV [Aktiv]",
+    mitspieler: "Mitspieler",
+    leave: "Gah",
+    currentQuestion: "Aktuelle Fraga",
+    submitAnswer: "Antwort abschiaba",
+    answerSubmitted: "✓ Antwort abgäh & feschtgschperrt",
+    waitingHostEdit: "Wartet uff Schiri-Freigab...",
+    editRejected: "Korrektur-Aadrag abgwisst.",
+    requestEdit: "Korrektur beim Schiri aafroga",
+    buzzedState: "DRUFFDRÜCKT!",
+    locked: "ZSGHSPERRT",
+    blocked: "BLOCKIERT",
+    buzzerBtn: "BUZZER",
+    waitingHostRelease: "Wartet bis dr Schiri d näggschte Fraga freigibt...",
+    modelAnswer: "Musterantwort:",
+    noAnswer: "Koi Aagab"
+  },
   sx: {
     appName: "Gwis Schou Live",
     appSub: "Gschwindes Gwis für disch un deine Kumpels",
@@ -356,7 +435,7 @@ export default function App() {
   // State für das Aufklappen des Sprachmenüs
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
-  // Globaler Klick-Listener zum Schließen des Sprachmenüs bei Klick außerhalb (schließt auch bei Klick auf den Button selbst, falls gewünscht oder Toggle greift)
+  // Globaler Klick-Listener zum Schließen des Sprachmenüs bei Klick außerhalb
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (isLangMenuOpen && !event.target.closest('#lang-menu-container')) {
@@ -499,7 +578,7 @@ export default function App() {
       const colData = publicCollections[selectedCollectionKey];
       loadedQuestions = colData.questions || [];
       if (colData.correctPoints !== undefined) cCorrectPts = Number(colData.correctPoints);
-      if (colData.wrongPoints !== undefined) cWrongPoints = Number(colData.wrongPoints);
+      if (colData.wrongPoints !== undefined) cWrongPts = Number(colData.wrongPoints);
     }
 
     const finalizedQuestions = loadedQuestions.map(q => ({
@@ -804,7 +883,7 @@ export default function App() {
     await update(ref(db), updates);
   };
 
-  // Sprachauswahl mit Icon und sx.png für Sächsisch
+  // Sprachauswahl mit Icon für Deutsch, Englisch, Serbisch, Schwäbisch (sw.png) und Sächsisch (sx.png)
   const renderLanguageSelector = () => {
     return (
       <div id="lang-menu-container" className="absolute top-4 right-4 z-50">
@@ -818,7 +897,7 @@ export default function App() {
           </button>
 
           {isLangMenuOpen && (
-            <div className="absolute right-0 mt-2 w-44 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1.5 flex flex-col gap-1 z-50">
+            <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1.5 flex flex-col gap-1 z-50">
               <button 
                 onClick={() => { setLang('de'); setIsLangMenuOpen(false); }} 
                 className={`px-3 py-2 text-xs font-bold transition flex items-center gap-2 text-left hover:bg-slate-700 ${lang === 'de' ? 'text-indigo-400 bg-slate-900/50' : 'text-slate-300'}`}
@@ -836,6 +915,12 @@ export default function App() {
                 className={`px-3 py-2 text-xs font-bold transition flex items-center gap-2 text-left hover:bg-slate-700 ${lang === 'sr' ? 'text-indigo-400 bg-slate-900/50' : 'text-slate-300'}`}
               >
                 <img src="/sr.png" alt="SRB" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> Srpski (SRB)
+              </button>
+              <button 
+                onClick={() => { setLang('sw'); setIsLangMenuOpen(false); }} 
+                className={`px-3 py-2 text-xs font-bold transition flex items-center gap-2 text-left hover:bg-slate-700 ${lang === 'sw' ? 'text-indigo-400 bg-slate-900/50' : 'text-slate-300'}`}
+              >
+                <img src="/sw.png" alt="SW" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> Schwäbisch (SW)
               </button>
               <button 
                 onClick={() => { setLang('sx'); setIsLangMenuOpen(false); }} 
