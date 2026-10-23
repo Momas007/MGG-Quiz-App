@@ -21,7 +21,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Übersetzungen mit PNG-Flaggen aus dem public-Ordner (/at.png, /gb.png, /sr.png)
+// Übersetzungen inkl. Sächsisch (sx) und Flaggen aus dem public-Ordner (/at.png, /gb.png, /sr.png, /sx.png)
 const translations = {
   de: {
     appName: "Quiz Show Live",
@@ -259,6 +259,85 @@ const translations = {
     waitingHostRelease: "Čeka se da moderator pusti sledeće pitanje...",
     modelAnswer: "Tačan odgovor:",
     noAnswer: "Nema odgovora"
+  },
+  sx: {
+    appName: "Gwis Schou Live",
+    appSub: "Gschwindes Gwis für disch un deine Kumpels",
+    yourName: "Dein Vaddagsname",
+    namePlaceholder: "z. B. Kalle",
+    hostRoom: "Als Schiri Bude uffmachn",
+    selectCollection: "Gwis-Sammälsche auswähln",
+    emptyRoom: "--- Leere Bude (Standard: +5 / -1) ---",
+    createRoomBtn: "Bude mit Sammälsche uffmachn",
+    createCollBtn: "Neues Gwis-Sammälsche bastln",
+    joinRoom: "In eene Bude neiglotzn / Hot-Join",
+    roomCodePlaceholder: "5-stellisener Code",
+    joinBtn: "Bude betreddn",
+    tvBtn: "TV / Discord Scharm",
+    roomClosed: "Dä Bude is dicht jemacht worn.",
+    roomNotExist: "Die Bude gibbdsjarjarneeda!",
+    errCreate: "Fehla beim Bude uffmachn.",
+    errNoName: "Sag ma 'n Sammälschnamen!",
+    errNoQ: "Tu ma mindesdens een Gwis einwärfn.",
+    saveSuccess: "Sammälsche erfolgreich egschbeisched!",
+    collectionManager: "Sammälschen-Schef",
+    saveCollection: "Sammälsche faschdgeiltn",
+    cancel: "Abbrechn",
+    collectionName: "Sammälschen-Name",
+    collNamePlaceholder: "z. B. Aldoch-Wissn 1",
+    defaultCorrect: "Standard-Punkte (+)",
+    defaultWrong: "Standard-Abzuch (-)",
+    addQuestion: "Gwis beifischn",
+    questionTextPlaceholder: "Gwis-Däxt eintippeln...",
+    questionType: "Gwis-Art",
+    mc: "Ankreuz-Gwis",
+    buzzer: "Druffhau-Buzza",
+    freetext: "Freischnauze-Antword",
+    correctAnswerText: "Vorbildlische Antword / Rischdische Löschung",
+    addQToColl: "Gwis zu Sammälsche zuheftn",
+    includedQuestions: "Darin enthaltene Gwis",
+    moderatorControl: "Schiri-Konfrolle",
+    roomCode: "Buden-Code",
+    closeAndDelete: "Bude dichtmachn & plattmachn",
+    editRequestMsg: "will seine Freischnauze-Antword flickn. Jedehmischn?",
+    allow: "Dorf",
+    deny: "Nee",
+    modPreview: "Schiri-Guggkasten",
+    live: "LÄIVE",
+    previewOnly: "Blos Guggkasten",
+    prev: "Vorherische",
+    next: "Nächste",
+    releaseLive: "Dä Gwis jetzt fär ALLE LOSSLASSEN & LÄIVE SCHALDN",
+    waitingBuzzer: "Wadde uffn Buzza...",
+    resetBuzzer: "Buzza zurüggsetztn",
+    correct: "Rischdisch",
+    wrong: "Falsch",
+    hideAnswer: "Antword verschteggln",
+    revealAnswer: "Antword uffdeckn (Auto-Punkte)",
+    createNewQuestion: "Neues Gwis erställn",
+    saveQuestion: "Gwis faschdgeiltn",
+    createdQuestions: "Erstellte Gwis",
+    viewPreview: "Guggä / Vorschau",
+    playersLive: "Mitspieler LÄIVE",
+    noPlayers: "Noch keene Mitspieler eigneträddn.",
+    answerLabel: "Antword:",
+    showOnTV: " uffm TV zeigsch",
+    activeOnTV: "Uffm TV [Aktiv]",
+    mitspieler: "Mitspieler",
+    leave: "Abhaun",
+    currentQuestion: "Jetzisge Gwis",
+    submitAnswer: "Antword abschisn",
+    answerSubmitted: "✓ Antword eihgereicht & verschlossn",
+    waitingHostEdit: "Wadde uffn Schiri-Säächn...",
+    editRejected: "Flick-Aadrach abjewiesen.",
+    requestEdit: "Flick-Aadrach beim Schiri machn",
+    buzzedState: "DRUFFJEHAUN!",
+    locked: "DICHT",
+    blocked: "GESPERRT",
+    buzzerBtn: "BUZZA",
+    waitingHostRelease: "Wadde uffs nächste Gwis vom Schiri...",
+    modelAnswer: "Mäschta-Antword:",
+    noAnswer: "Keene Angabe"
   }
 };
 
@@ -276,6 +355,19 @@ export default function App() {
   
   // State für das Aufklappen des Sprachmenüs
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+
+  // Globaler Klick-Listener zum Schließen des Sprachmenüs bei Klick außerhalb (schließt auch bei Klick auf den Button selbst, falls gewünscht oder Toggle greift)
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isLangMenuOpen && !event.target.closest('#lang-menu-container')) {
+        setIsLangMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isLangMenuOpen]);
 
   // Kollektion Erstellungs State (Standard: +5 und -1)
   const [collHeader, setCollHeader] = useState('');
@@ -407,7 +499,7 @@ export default function App() {
       const colData = publicCollections[selectedCollectionKey];
       loadedQuestions = colData.questions || [];
       if (colData.correctPoints !== undefined) cCorrectPts = Number(colData.correctPoints);
-      if (colData.wrongPoints !== undefined) cWrongPts = Number(colData.wrongPoints);
+      if (colData.wrongPoints !== undefined) cWrongPoints = Number(colData.wrongPoints);
     }
 
     const finalizedQuestions = loadedQuestions.map(q => ({
@@ -712,12 +804,11 @@ export default function App() {
     await update(ref(db), updates);
   };
 
-  // Samo ikona svijeta koja otvara meni sa jezicima i zastavicama
+  // Sprachauswahl mit Icon und sx.png für Sächsisch
   const renderLanguageSelector = () => {
     return (
-      <div className="absolute top-4 right-4 z-50">
+      <div id="lang-menu-container" className="absolute top-4 right-4 z-50">
         <div className="relative">
-          {/* Samo ikona svijeta */}
           <button
             onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
             className="p-2.5 bg-slate-800/90 border border-slate-700 rounded-xl shadow-lg hover:bg-slate-700 transition text-indigo-400 flex items-center justify-center"
@@ -726,9 +817,8 @@ export default function App() {
             <Globe className="w-5 h-5" />
           </button>
 
-          {/* Aufgeklapptes Dropdown-Menü */}
           {isLangMenuOpen && (
-            <div className="absolute right-0 mt-2 w-40 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1.5 flex flex-col gap-1 z-50">
+            <div className="absolute right-0 mt-2 w-44 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1.5 flex flex-col gap-1 z-50">
               <button 
                 onClick={() => { setLang('de'); setIsLangMenuOpen(false); }} 
                 className={`px-3 py-2 text-xs font-bold transition flex items-center gap-2 text-left hover:bg-slate-700 ${lang === 'de' ? 'text-indigo-400 bg-slate-900/50' : 'text-slate-300'}`}
@@ -746,6 +836,12 @@ export default function App() {
                 className={`px-3 py-2 text-xs font-bold transition flex items-center gap-2 text-left hover:bg-slate-700 ${lang === 'sr' ? 'text-indigo-400 bg-slate-900/50' : 'text-slate-300'}`}
               >
                 <img src="/sr.png" alt="SRB" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> Srpski (SRB)
+              </button>
+              <button 
+                onClick={() => { setLang('sx'); setIsLangMenuOpen(false); }} 
+                className={`px-3 py-2 text-xs font-bold transition flex items-center gap-2 text-left hover:bg-slate-700 ${lang === 'sx' ? 'text-indigo-400 bg-slate-900/50' : 'text-slate-300'}`}
+              >
+                <img src="/sx.png" alt="SX" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> Sächsisch (SX)
               </button>
             </div>
           )}
@@ -1648,7 +1744,7 @@ export default function App() {
         {playerList.map(p => {
           const hasSubmitted = p.answer !== null && p.answer !== undefined;
           return (
-            <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center relative overflow-hidden flex items-center justify-between px-5">
+            <div key={p.name} className="p-4 bg-slate-900 rounded-xl border border-slate-800 text-center relative overflow-hidden flex items-center justify-between px-5">
               <div className="text-left truncate">
                 <p className="text-xs text-slate-400 truncate">{p.name}</p>
                 <p className="text-xl font-black text-indigo-400">{p.score} Pkt.</p>
