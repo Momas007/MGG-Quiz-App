@@ -494,18 +494,7 @@ export default function App() {
 
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (isLangMenuOpen && !event.target.closest('#lang-menu-container')) {
-        setIsLangMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isLangMenuOpen]);
-
+  // States für Kollektions-Erstellung und -Bearbeitung (global oben definiert, um React Hook Fehler #310 zu verhindern)
   const [collHeader, setCollHeader] = useState('');
   const [collCorrectPoints, setCollCorrectPoints] = useState(5);
   const [collWrongPoints, setCollWrongPoints] = useState(1);
@@ -514,6 +503,11 @@ export default function App() {
   const [collQuestions, setCollQuestions] = useState([]);
   const [publicCollections, setPublicCollections] = useState({});
   const [selectedCollectionKey, setSelectedCollectionKey] = useState('');
+
+  // States für Kollektions-Auswahl zum Bearbeiten
+  const [selectedEditKey, setSelectedEditKey] = useState('');
+  const [editPasswordInput, setEditPasswordInput] = useState('');
+  const [editPasswordError, setEditPasswordError] = useState('');
 
   // Bearbeitungs-Zustand für einzelne Fragen im Kollektions-Ersteller
   const [editingQuestionId, setEditingQuestionId] = useState(null);
@@ -1215,10 +1209,6 @@ export default function App() {
 
   // --- KOLLEKTIONS-AUSWAHL ZUM BEARBEITEN ---
   if (role === 'collection_selector_for_edit') {
-    const [selectedEditKey, setSelectedEditKey] = useState('');
-    const [editPasswordInput, setEditPasswordInput] = useState('');
-    const [editPasswordError, setEditPasswordError] = useState('');
-
     const handleSelectCollectionToEdit = (e) => {
       e.preventDefault();
       if (!selectedEditKey || !publicCollections[selectedEditKey]) return;
