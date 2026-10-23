@@ -712,28 +712,23 @@ export default function App() {
     await update(ref(db), updates);
   };
 
-  // Eingeklappte Sprachauswahl mit Welt-Icon und Flaggen
+  // Samo ikona svijeta koja otvara meni sa jezicima i zastavicama
   const renderLanguageSelector = () => {
-    const flagSrc = lang === 'de' ? '/at.png' : lang === 'en' ? '/gb.png' : '/sr.png';
-    const langLabel = lang === 'de' ? 'DE' : lang === 'en' ? 'ENG' : 'SRB';
-
     return (
       <div className="absolute top-4 right-4 z-50">
         <div className="relative">
-          {/* Button zum Aufklappen mit Welt-Icon und aktiver Flagge */}
+          {/* Samo ikona svijeta */}
           <button
             onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-            className="flex items-center gap-2 bg-slate-800/90 border border-slate-700 px-3 py-2 rounded-xl shadow-lg hover:bg-slate-700 transition text-white"
-            title="Sprache auswählen"
+            className="p-2.5 bg-slate-800/90 border border-slate-700 rounded-xl shadow-lg hover:bg-slate-700 transition text-indigo-400 flex items-center justify-center"
+            title="Sprache auswählen / Izaberi jezik"
           >
-            <Globe className="w-4 h-4 text-indigo-400" />
-            <img src={flagSrc} alt={langLabel} className="w-5 h-3.5 object-cover rounded-sm shadow-sm" />
-            <span className="text-xs font-bold">{langLabel}</span>
+            <Globe className="w-5 h-5" />
           </button>
 
           {/* Aufgeklapptes Dropdown-Menü */}
           {isLangMenuOpen && (
-            <div className="absolute right-0 mt-2 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1.5 flex flex-col gap-1 z-50">
+            <div className="absolute right-0 mt-2 w-40 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1.5 flex flex-col gap-1 z-50">
               <button 
                 onClick={() => { setLang('de'); setIsLangMenuOpen(false); }} 
                 className={`px-3 py-2 text-xs font-bold transition flex items-center gap-2 text-left hover:bg-slate-700 ${lang === 'de' ? 'text-indigo-400 bg-slate-900/50' : 'text-slate-300'}`}
