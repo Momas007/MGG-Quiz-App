@@ -1074,7 +1074,8 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 space-y-3">
+              {/* Als Formular gefasst, damit der Erstellen-Button garantiert auslöst */}
+              <form onSubmit={handleTriggerCreateRoom} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 space-y-3">
                 <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
                   <Shield className="w-4 h-4 text-indigo-400" /> {t.hostRoom}
                 </h3>
@@ -1104,17 +1105,17 @@ export default function App() {
                 </div>
 
                 <button
-                  type="button"
-                  onClick={handleTriggerCreateRoom}
+                  type="submit"
                   disabled={!playerName.trim()}
                   className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition"
                 >
                   {t.createRoomBtn}
                 </button>
-              </div>
+              </form>
 
               <div className="text-center pt-1">
                 <button
+                  type="button"
                   onClick={() => {
                     setRole('collection_creator');
                     setCollHeader('');
