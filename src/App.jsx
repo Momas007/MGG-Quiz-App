@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, get, child, remove } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight, Radio, FolderPlus, BookOpen, Layers, Globe
+  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight, Radio, FolderPlus, BookOpen, Layers, Globe, Unlock
 } from 'lucide-react';
 
 // Firebase Konfiguration
@@ -21,7 +21,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Übersetzungen inkl. Schwäbisch (sw) und Sächsisch (sx) sowie Flaggen aus dem public-Ordner
+// Übersetzungen inkl. Schwäbisch (sw) und Sächsisch (sx) sowie Passwort / Öffentlich / Privat Feldern
 const translations = {
   de: {
     appName: "Quiz Show Live",
@@ -100,7 +100,15 @@ const translations = {
     buzzerBtn: "BUZZER",
     waitingHostRelease: "Warte auf die Freigabe der nächsten Frage durch den Moderator...",
     modelAnswer: "Musterantwort:",
-    noAnswer: "Keine Angabe"
+    noAnswer: "Keine Angabe",
+    visibility: "Sichtbarkeit",
+    public: "Öffentlich (Public)",
+    private: "Privat (Passwortgeschützt)",
+    passwordPromptTitle: "Passwort erforderlich",
+    passwordPromptDesc: "Diese Kollektion ist privat. Bitte gib das Passwort ein:",
+    passwordPlaceholder: "Passwort...",
+    submit: "Bestätigen",
+    wrongPassword: "Falsches Passwort!"
   },
   en: {
     appName: "Quiz Show Live",
@@ -179,7 +187,15 @@ const translations = {
     buzzerBtn: "BUZZER",
     waitingHostRelease: "Waiting for the host to release the next question...",
     modelAnswer: "Model Answer:",
-    noAnswer: "No answer"
+    noAnswer: "No answer",
+    visibility: "Visibility",
+    public: "Public",
+    private: "Private (Password Protected)",
+    passwordPromptTitle: "Password Required",
+    passwordPromptDesc: "This collection is private. Please enter the password:",
+    passwordPlaceholder: "Password...",
+    submit: "Submit",
+    wrongPassword: "Wrong password!"
   },
   sr: {
     appName: "Kviz Uživo",
@@ -258,7 +274,15 @@ const translations = {
     buzzerBtn: "BUZZER",
     waitingHostRelease: "Čeka se da moderator pusti sledeće pitanje...",
     modelAnswer: "Tačan odgovor:",
-    noAnswer: "Nema odgovora"
+    noAnswer: "Nema odgovora",
+    visibility: "Vidljivost",
+    public: "Javno (Public)",
+    private: "Privatno (Zaštićeno lozinkom)",
+    passwordPromptTitle: "Potrebna lozinka",
+    passwordPromptDesc: "Ova kolekcija je privatna. Unesi lozinku:",
+    passwordPlaceholder: "Lozinka...",
+    submit: "Potvrdi",
+    wrongPassword: "Pogrešna lozinka!"
   },
   sw: {
     appName: "Guiz Schou Live",
@@ -337,7 +361,15 @@ const translations = {
     buzzerBtn: "BUZZER",
     waitingHostRelease: "Wartet bis dr Schiri d näggschte Fraga freigibt...",
     modelAnswer: "Musterantwort:",
-    noAnswer: "Koi Aagab"
+    noAnswer: "Koi Aagab",
+    visibility: "Sichtbarkeit",
+    public: "Öffentlich (Public)",
+    private: "Privat (Mit Passwort)",
+    passwordPromptTitle: "Passwort braucht's",
+    passwordPromptDesc: "Diese Sammlong isch privat. Bitte gib d Passwort ei:",
+    passwordPlaceholder: "Passwort...",
+    submit: "Bschtätiga",
+    wrongPassword: "Falsches Passwort!"
   },
   sx: {
     appName: "Gwis Schou Live",
@@ -416,7 +448,15 @@ const translations = {
     buzzerBtn: "BUZZA",
     waitingHostRelease: "Wadde uffs nächste Gwis vom Schiri...",
     modelAnswer: "Mäschta-Antword:",
-    noAnswer: "Keene Angabe"
+    noAnswer: "Keene Angabe",
+    visibility: "Gugg-Barkeit",
+    public: "Offnsichtlich (Public)",
+    private: "Privat (Mit Geheimwort)",
+    passwordPromptTitle: "Geheimwort verlangt",
+    passwordPromptDesc: "Diese Sammälsche is privat. Tipp ma das Geheimwort ein:",
+    passwordPlaceholder: "Geheimwort...",
+    submit: "Abnicken",
+    wrongPassword: "Falsches Geheimwort!"
   }
 };
 
@@ -432,10 +472,16 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [playerTextAnswer, setPlayerTextAnswer] = useState('');
   
+  // Passwort-Abfrage Modal State für private Kollektionen beim Erstellen eines Raums
+  const [pendingCollectionKey, setPendingCollectionKey] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [roomPasswordInput, setRoomPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
   // State für das Aufklappen des Sprachmenüs
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
-  // Globaler Klick-Listener zum Schließen des Sprachmenüs bei Klick außerhalb
+  // Globaler Klick-Listener zum Schließen des Sprachmenüs
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (isLangMenuOpen && !event.target.closest('#lang-menu-container')) {
@@ -448,10 +494,12 @@ export default function App() {
     };
   }, [isLangMenuOpen]);
 
-  // Kollektion Erstellungs State (Standard: +5 und -1)
+  // Kollektion Erstellungs State
   const [collHeader, setCollHeader] = useState('');
   const [collCorrectPoints, setCollCorrectPoints] = useState(5);
   const [collWrongPoints, setCollWrongPoints] = useState(1);
+  const [collVisibility, setCollVisibility] = useState('public'); // 'public' | 'private'
+  const [collPassword, setCollPassword] = useState('');
   const [collQuestions, setCollQuestions] = useState([]);
   const [publicCollections, setPublicCollections] = useState({});
   const [selectedCollectionKey, setSelectedCollectionKey] = useState('');
@@ -488,12 +536,10 @@ export default function App() {
     }
   }, [role]);
 
-  // Wenn die Sprache gewechselt wird, Auswahl der Kollektion zurücksetzen damit keine falsche geladen bleibt
   useEffect(() => {
     setSelectedCollectionKey('');
   }, [lang]);
 
-  // Synchronisierung des lokalen Antwort-Inputs bei Live-Datenänderungen
   useEffect(() => {
     if (role === 'player' && roomData?.players?.[playerName]) {
       const currentAns = roomData.players[playerName].answer;
@@ -503,7 +549,6 @@ export default function App() {
     }
   }, [roomData, role, playerName]);
 
-  // Audio Feedback
   const playSound = (type) => {
     if (!soundEnabled) return;
     try {
@@ -535,7 +580,6 @@ export default function App() {
     }
   };
 
-  // Synchronisierung mit Firebase Raum
   useEffect(() => {
     if (!roomCode) return;
     const roomRef = ref(db, `rooms/${roomCode}`);
@@ -564,21 +608,50 @@ export default function App() {
     return code;
   };
 
-  // Raum Erstellen (Als Moderator) - Übernimmt Kollektions-Punkte falls vorhanden
-  const handleCreateRoom = async (e) => {
+  // Raum Erstellen Auslöser (Prüft ob Kollektion ein Passwort hat)
+  const handleTriggerCreateRoom = (e) => {
     if (e) e.preventDefault();
     if (!playerName.trim()) return;
+
+    if (selectedCollectionKey && publicCollections[selectedCollectionKey]) {
+      const colData = publicCollections[selectedCollectionKey];
+      if (colData.visibility === 'private' && colData.password) {
+        setPendingCollectionKey(selectedCollectionKey);
+        setRoomPasswordInput('');
+        setPasswordError('');
+        setShowPasswordModal(true);
+        return;
+      }
+    }
+
+    executeCreateRoom(selectedCollectionKey);
+  };
+
+  // Passwort bestätigen und Raum erstellen
+  const handleVerifyPasswordAndCreate = (e) => {
+    e.preventDefault();
+    const colData = publicCollections[pendingCollectionKey];
+    if (colData && colData.password === roomPasswordInput) {
+      setShowPasswordModal(false);
+      executeCreateRoom(pendingCollectionKey);
+    } else {
+      setPasswordError(t.wrongPassword);
+    }
+  };
+
+  // Eigentliche Raumerstellung in Firebase
+  const executeCreateRoom = async (colKey) => {
     const newCode = generateCode();
     
     let loadedQuestions = [];
     let cCorrectPts = 5;
     let cWrongPts = 1;
 
-    if (selectedCollectionKey && publicCollections[selectedCollectionKey]) {
-      const colData = publicCollections[selectedCollectionKey];
+    if (colKey && publicCollections[colKey]) {
+      const colData = publicCollections[colKey];
       loadedQuestions = colData.questions || [];
       if (colData.correctPoints !== undefined) cCorrectPts = Number(colData.correctPoints);
-      if (colData.wrongPoints !== undefined) cWrongPts = Number(colData.wrongPoints);
+      if (colData.wrongPoints !== undefined) cWrongPoints = Number(colData.wrongPoints);
     }
 
     const finalizedQuestions = loadedQuestions.map(q => ({
@@ -612,7 +685,6 @@ export default function App() {
     }
   };
 
-  // Raum Beitreten / Hot-Join
   const handleJoinRoom = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -883,7 +955,7 @@ export default function App() {
     await update(ref(db), updates);
   };
 
-  // Sprachauswahl mit Icon für Deutsch, Englisch, Serbisch, Schwäbisch (sw.png) und Sächsisch (sx.png)
+  // Sprachauswahl mit Flaggen aus dem Public-Ordner
   const renderLanguageSelector = () => {
     return (
       <div id="lang-menu-container" className="absolute top-4 right-4 z-50">
@@ -941,6 +1013,48 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
         {renderLanguageSelector()}
 
+        {/* Passwort-Abfrage Modal */}
+        {showPasswordModal && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+              <div className="flex items-center gap-3 text-amber-400">
+                <Lock className="w-6 h-6 shrink-0" />
+                <h3 className="text-lg font-bold text-white">{t.passwordPromptTitle}</h3>
+              </div>
+              <p className="text-xs text-slate-300">{t.passwordPromptDesc}</p>
+              
+              <form onSubmit={handleVerifyPasswordAndCreate} className="space-y-3">
+                <input
+                  type="password"
+                  placeholder={t.passwordPlaceholder}
+                  value={roomPasswordInput}
+                  onChange={(e) => setRoomPasswordInput(e.target.value)}
+                  autoFocus
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500"
+                />
+                {passwordError && (
+                  <p className="text-xs text-rose-400 font-semibold">{passwordError}</p>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 rounded-xl text-xs transition"
+                  >
+                    {t.submit}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordModal(false)}
+                    className="px-4 bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold py-2 rounded-xl text-xs transition"
+                  >
+                    {t.cancel}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-md w-full bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700 space-y-6">
           <div className="text-center">
             <div className="inline-flex p-3 bg-indigo-600/20 text-indigo-400 rounded-2xl mb-3">
@@ -972,7 +1086,7 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              <form onSubmit={handleCreateRoom} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 space-y-3">
+              <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 space-y-3">
                 <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
                   <Shield className="w-4 h-4 text-indigo-400" /> {t.hostRoom}
                 </h3>
@@ -990,22 +1104,26 @@ export default function App() {
                         const collLang = cData.language || 'de';
                         return collLang === lang;
                       })
-                      .map(([cKey, cData]) => (
-                        <option key={cKey} value={cKey}>
-                          {cData.header} ({cData.questions?.length || 0} Q | +{cData.correctPoints !== undefined ? cData.correctPoints : 5} / -{cData.wrongPoints !== undefined ? cData.wrongPoints : 1})
-                        </option>
-                      ))}
+                      .map(([cKey, cData]) => {
+                        const isPriv = cData.visibility === 'private';
+                        return (
+                          <option key={cKey} value={cKey}>
+                            {isPriv ? '🔒 ' : '🌐 '}{cData.header} ({cData.questions?.length || 0} Q | +{cData.correctPoints !== undefined ? cData.correctPoints : 5} / -{cData.wrongPoints !== undefined ? cData.wrongPoints : 1})
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
 
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleTriggerCreateRoom}
                   disabled={!playerName.trim()}
                   className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition"
                 >
                   {t.createRoomBtn}
                 </button>
-              </form>
+              </div>
 
               <div className="text-center pt-1">
                 <button
@@ -1014,6 +1132,8 @@ export default function App() {
                     setCollHeader('');
                     setCollCorrectPoints(5);
                     setCollWrongPoints(1);
+                    setCollVisibility('public');
+                    setCollPassword('');
                     setCollQuestions([]);
                   }}
                   className="text-xs text-indigo-400 hover:underline flex items-center justify-center gap-1 mx-auto font-medium"
@@ -1083,6 +1203,10 @@ export default function App() {
         alert(t.errNoQ);
         return;
       }
+      if (collVisibility === 'private' && !collPassword.trim()) {
+        alert('Bitte gib ein Passwort für die private Kollektion ein.');
+        return;
+      }
 
       try {
         const safeKey = cleanHeader.replace(/[.#$[\]]/g, '_');
@@ -1092,6 +1216,8 @@ export default function App() {
           language: lang,
           correctPoints: Number(collCorrectPoints) || 5,
           wrongPoints: Number(collWrongPoints) || 1,
+          visibility: collVisibility,
+          password: collVisibility === 'private' ? collPassword.trim() : null,
           createdAt: Date.now(),
           questions: collQuestions
         });
@@ -1135,7 +1261,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="md:col-span-1">
                 <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t.collectionName}</label>
                 <input
@@ -1164,7 +1290,31 @@ export default function App() {
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-semibold text-indigo-400 uppercase mb-1">{t.visibility}</label>
+                <select
+                  value={collVisibility}
+                  onChange={(e) => setCollVisibility(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm"
+                >
+                  <option value="public">🌐 {t.public}</option>
+                  <option value="private">🔒 {t.private}</option>
+                </select>
+              </div>
             </div>
+
+            {collVisibility === 'private' && (
+              <div className="p-3 bg-indigo-950/30 border border-indigo-500/40 rounded-xl flex items-center gap-3">
+                <Lock className="w-5 h-5 text-indigo-400 shrink-0" />
+                <input
+                  type="password"
+                  placeholder={t.passwordPlaceholder}
+                  value={collPassword}
+                  onChange={(e) => setCollPassword(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-white text-sm"
+                />
+              </div>
+            )}
           </div>
 
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-4 shadow-xl">
@@ -1824,7 +1974,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Leaderboard mit Status-Kvačicom für predate odgovore */}
       <div className="grid grid-cols-4 gap-4">
         {playerList.map(p => {
           const hasSubmitted = p.answer !== null && p.answer !== undefined;
