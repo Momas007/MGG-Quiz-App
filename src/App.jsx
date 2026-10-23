@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, get, child, remove } from 'firebase/database';
 import { 
   Play, Plus, Trash2, Volume2, VolumeX, 
-  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight, Radio, FolderPlus, BookOpen, Layers, Globe, Unlock
+  Tv, UserCheck, Shield, Sparkles, KeyRound, User, AlertCircle, Send, CheckSquare, Square, Eye, EyeOff, Award, Check, X, LogOut, Lock, Edit3, RotateCcw, ChevronLeft, ChevronRight, Radio, FolderPlus, BookOpen, Layers, Globe, Unlock, Edit
 } from 'lucide-react';
 
 // Firebase Konfiguration
@@ -33,6 +33,7 @@ const translations = {
     emptyRoom: "--- Leerer Raum (Standard: +5 / -1) ---",
     createRoomBtn: "Raum mit gewählter Kollektion erstellen",
     createCollBtn: "Neue Fragen-Kollektion erstellen",
+    editCollBtn: "Bestehende Kollektion bearbeiten",
     joinRoom: "Einem Raum beitreten / Hot-Join",
     roomCodePlaceholder: "5-stelliger Code",
     joinBtn: "Raum betreten",
@@ -51,6 +52,7 @@ const translations = {
     defaultCorrect: "Standard Punkte (+)",
     defaultWrong: "Standard Abzug (-)",
     addQuestion: "Frage hinzufügen",
+    updateQuestion: "Frage aktualisieren",
     questionTextPlaceholder: "Fragetext eintippen...",
     questionType: "Fragetyp",
     mc: "Multiple Choice",
@@ -120,6 +122,7 @@ const translations = {
     emptyRoom: "--- Empty Room (Default: +5 / -1) ---",
     createRoomBtn: "Create room with selected collection",
     createCollBtn: "Create new question collection",
+    editCollBtn: "Edit existing collection",
     joinRoom: "Join Room / Hot-Join",
     roomCodePlaceholder: "5-digit code",
     joinBtn: "Join Room",
@@ -138,6 +141,7 @@ const translations = {
     defaultCorrect: "Default Points (+)",
     defaultWrong: "Default Deduction (-)",
     addQuestion: "Add Question",
+    updateQuestion: "Update Question",
     questionTextPlaceholder: "Type question text...",
     questionType: "Question Type",
     mc: "Multiple Choice",
@@ -207,6 +211,7 @@ const translations = {
     emptyRoom: "--- Prazna soba (Standard: +5 / -1) ---",
     createRoomBtn: "Kreiraj sobu sa izabranom kolekcijom",
     createCollBtn: "Kreiraj novu kolekciju pitanja",
+    editCollBtn: "Izmeni postojeću kolekciju",
     joinRoom: "Pridruži se sobi / Hot-Join",
     roomCodePlaceholder: "5-cifreni kod",
     joinBtn: "Uđi u sobu",
@@ -225,6 +230,7 @@ const translations = {
     defaultCorrect: "Standardni poeni (+)",
     defaultWrong: "Standardni minus (-)",
     addQuestion: "Dodaj pitanje",
+    updateQuestion: "Ažuriraj pitanje",
     questionTextPlaceholder: "Unesi tekst pitanja...",
     questionType: "Tip pitanja",
     mc: "Više ponuđenih odgovora",
@@ -294,6 +300,7 @@ const translations = {
     emptyRoom: "--- Leeres Zimmer (Standard: +5 / -1) ---",
     createRoomBtn: "Zimmer mit ausgewählter Sammlong uffmacha",
     createCollBtn: "Neie Fraga-Sammlong macha",
+    editCollBtn: "Alte Sammlong bearbeita",
     joinRoom: "In a Zimmer naika / Hot-Join",
     roomCodePlaceholder: "5-stelliger Code",
     joinBtn: "Zimmer betreda",
@@ -312,6 +319,7 @@ const translations = {
     defaultCorrect: "Standard Pünkt (+)",
     defaultWrong: "Standard Abzug (-)",
     addQuestion: "Fraga drzua",
+    updateQuestion: "Fraga aktualisiera",
     questionTextPlaceholder: "Fragatext neiipuffa...",
     questionType: "Fragatyp",
     mc: "Multiple Choice",
@@ -381,6 +389,7 @@ const translations = {
     emptyRoom: "--- Leere Bude (Standard: +5 / -1) ---",
     createRoomBtn: "Bude mit Sammälsche uffmachn",
     createCollBtn: "Neues Gwis-Sammälsche bastln",
+    editCollBtn: "Altes Sammälsche beackan",
     joinRoom: "In eene Bude neiglotzn / Hot-Join",
     roomCodePlaceholder: "5-stellisener Code",
     joinBtn: "Bude betreddn",
@@ -399,6 +408,7 @@ const translations = {
     defaultCorrect: "Standard-Punkte (+)",
     defaultWrong: "Standard-Abzuch (-)",
     addQuestion: "Gwis beifischn",
+    updateQuestion: "Gwis ufffrischn",
     questionTextPlaceholder: "Gwis-Däxt eintippeln...",
     questionType: "Gwis-Art",
     mc: "Ankreuz-Gwis",
@@ -464,7 +474,7 @@ export default function App() {
   const [lang, setLang] = useState('de');
   const t = translations[lang];
 
-  const [role, setRole] = useState(null); // 'host' | 'player' | 'tv' | 'collection_creator'
+  const [role, setRole] = useState(null); // 'host' | 'player' | 'tv' | 'collection_creator' | 'collection_selector_for_edit'
   const [roomCode, setRoomCode] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [inputCode, setInputCode] = useState('');
@@ -499,6 +509,9 @@ export default function App() {
   const [collQuestions, setCollQuestions] = useState([]);
   const [publicCollections, setPublicCollections] = useState({});
   const [selectedCollectionKey, setSelectedCollectionKey] = useState('');
+
+  // Bearbeitungs-Zustand für einzelne Fragen im Kollektions-Ersteller
+  const [editingQuestionId, setEditingQuestionId] = useState(null);
 
   const [newCollQText, setNewCollQText] = useState('');
   const [newCollQType, setNewCollQType] = useState('mc');
@@ -1119,7 +1132,7 @@ export default function App() {
                 </button>
               </form>
 
-              <div className="text-center pt-1">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -1130,10 +1143,20 @@ export default function App() {
                     setCollVisibility('public');
                     setCollPassword('');
                     setCollQuestions([]);
+                    setEditingQuestionId(null);
                   }}
-                  className="text-xs text-indigo-400 hover:underline flex items-center justify-center gap-1 mx-auto font-medium"
+                  className="flex-1 text-xs text-indigo-400 bg-slate-900/40 hover:bg-slate-900 border border-slate-700/50 p-2.5 rounded-xl flex items-center justify-center gap-1 font-medium transition"
                 >
                   <FolderPlus className="w-4 h-4" /> {t.createCollBtn}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRole('collection_selector_for_edit');
+                  }}
+                  className="flex-1 text-xs text-amber-400 bg-slate-900/40 hover:bg-slate-900 border border-slate-700/50 p-2.5 rounded-xl flex items-center justify-center gap-1 font-medium transition"
+                >
+                  <Edit className="w-4 h-4" /> {t.editCollBtn}
                 </button>
               </div>
 
@@ -1186,7 +1209,114 @@ export default function App() {
     );
   }
 
-  // --- EIGENER KOLLEKTIONS-ERSTELLER MODUS ---
+  // --- KOLLEKTIONS-AUSWAHL ZUM BEARBEITEN ---
+  if (role === 'collection_selector_for_edit') {
+    const [selectedEditKey, setSelectedEditKey] = useState('');
+    const [editPasswordInput, setEditPasswordInput] = useState('');
+    const [editPasswordError, setEditPasswordError] = useState('');
+
+    const handleSelectCollectionToEdit = (e) => {
+      e.preventDefault();
+      if (!selectedEditKey || !publicCollections[selectedEditKey]) return;
+
+      const colData = publicCollections[selectedEditKey];
+      if (colData.visibility === 'private' && colData.password) {
+        if (colData.password !== editPasswordInput) {
+          setEditPasswordError(t.wrongPassword);
+          return;
+        }
+      }
+
+      // Laden der Kollektion in den Editor
+      setCollHeader(colData.header || '');
+      setCollCorrectPoints(colData.correctPoints !== undefined ? colData.correctPoints : 5);
+      setCollWrongPoints(colData.wrongPoints !== undefined ? colData.wrongPoints : 1);
+      setCollVisibility(colData.visibility || 'public');
+      setCollPassword(colData.password || '');
+      
+      let loadedQ = [];
+      if (colData.questions) {
+        loadedQ = Array.isArray(colData.questions) ? colData.questions : Object.values(colData.questions);
+      }
+      setCollQuestions(loadedQ);
+      setEditingQuestionId(null);
+      setRole('collection_creator');
+    };
+
+    const targetColl = publicCollections[selectedEditKey];
+    const isPrivateAndNeedsPassword = targetColl && targetColl.visibility === 'private' && targetColl.password;
+
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4 relative">
+        {renderLanguageSelector()}
+
+        <div className="max-w-md w-full bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700 space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-700">
+            <h2 className="text-lg font-bold text-amber-400 flex items-center gap-2">
+              <Edit className="w-5 h-5"/> {t.editCollBtn}
+            </h2>
+            <button 
+              onClick={() => setRole(null)}
+              className="text-xs text-slate-400 hover:text-white"
+            >
+              {t.cancel}
+            </button>
+          </div>
+
+          <form onSubmit={handleSelectCollectionToEdit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t.selectCollection}</label>
+              <select
+                value={selectedEditKey}
+                onChange={(e) => {
+                  setSelectedEditKey(e.target.value);
+                  setEditPasswordInput('');
+                  setEditPasswordError('');
+                }}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white"
+              >
+                <option value="">--- Bitte wählen ---</option>
+                {Object.entries(publicCollections).map(([cKey, cData]) => {
+                  const isPriv = cData.visibility === 'private';
+                  return (
+                    <option key={cKey} value={cKey}>
+                      {isPriv ? '🔒 ' : '🌐 '}{cData.header}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {isPrivateAndNeedsPassword && (
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-amber-400 uppercase">{t.passwordPromptTitle}</label>
+                <input
+                  type="password"
+                  placeholder={t.passwordPlaceholder}
+                  value={editPasswordInput}
+                  onChange={(e) => setEditPasswordInput(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm"
+                />
+                {editPasswordError && (
+                  <p className="text-xs text-rose-400 font-semibold">{editPasswordError}</p>
+                )}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={!selectedEditKey}
+              className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition text-sm"
+            >
+              Kollektion laden & bearbeiten
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // --- EIGENER KOLLEKTIONS-ERSTELLER / BEARBEITER MODUS ---
   if (role === 'collection_creator') {
     const handleSaveCollectionToDB = async () => {
       const cleanHeader = collHeader.trim();
@@ -1313,7 +1443,9 @@ export default function App() {
           </div>
 
           <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-4 shadow-xl">
-            <h2 className="text-lg font-bold text-indigo-400">{t.addQuestion}</h2>
+            <h2 className="text-lg font-bold text-indigo-400">
+              {editingQuestionId ? t.updateQuestion : t.addQuestion}
+            </h2>
             
             <div className="space-y-4">
               <input
@@ -1377,27 +1509,63 @@ export default function App() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (!newCollQText.trim()) return;
-                  const newQ = {
-                    id: Date.now() + Math.random(),
-                    text: newCollQText,
-                    type: newCollQType,
-                    options: newCollQType === 'mc' ? [...newCollQOptions] : [],
-                    correctOption: newCollQType === 'mc' ? newCollQCorrectOpt : null,
-                    correctText: newCollQType === 'freetext' ? newCollQCorrectText : ''
-                  };
-                  setCollQuestions([...collQuestions, newQ]);
-                  setNewCollQText('');
-                  setNewCollQOptions(['', '', '', '']);
-                  setNewCollQCorrectText('');
-                }}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl font-semibold transition text-sm flex items-center justify-center gap-2"
-              >
-                <Plus className="w-4 h-4"/> {t.addQToColl}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!newCollQText.trim()) return;
+                    if (editingQuestionId !== null) {
+                      // Aktualisieren der existierenden Frage
+                      setCollQuestions(collQuestions.map(q => {
+                        if (q.id === editingQuestionId) {
+                          return {
+                            ...q,
+                            text: newCollQText,
+                            type: newCollQType,
+                            options: newCollQType === 'mc' ? [...newCollQOptions] : [],
+                            correctOption: newCollQType === 'mc' ? newCollQCorrectOpt : null,
+                            correctText: newCollQType === 'freetext' ? newCollQCorrectText : ''
+                          };
+                        }
+                        return q;
+                      }));
+                      setEditingQuestionId(null);
+                    } else {
+                      // Neue Frage hinzufügen
+                      const newQ = {
+                        id: Date.now() + Math.random(),
+                        text: newCollQText,
+                        type: newCollQType,
+                        options: newCollQType === 'mc' ? [...newCollQOptions] : [],
+                        correctOption: newCollQType === 'mc' ? newCollQCorrectOpt : null,
+                        correctText: newCollQType === 'freetext' ? newCollQCorrectText : ''
+                      };
+                      setCollQuestions([...collQuestions, newQ]);
+                    }
+                    setNewCollQText('');
+                    setNewCollQOptions(['', '', '', '']);
+                    setNewCollQCorrectText('');
+                  }}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl font-semibold transition text-sm flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4"/> {editingQuestionId ? t.updateQuestion : t.addQToColl}
+                </button>
+
+                {editingQuestionId !== null && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingQuestionId(null);
+                      setNewCollQText('');
+                      setNewCollQOptions(['', '', '', '']);
+                      setNewCollQCorrectText('');
+                    }}
+                    className="px-4 bg-slate-700 hover:bg-slate-600 text-slate-300 py-2.5 rounded-xl font-semibold text-sm transition"
+                  >
+                    {t.cancel}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1406,20 +1574,44 @@ export default function App() {
               <h3 className="text-sm font-bold text-slate-400">{t.includedQuestions} ({collQuestions.length})</h3>
               <div className="space-y-2">
                 {collQuestions.map((q, idx) => (
-                  <div key={q.id} className="p-3 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-between text-sm">
+                  <div key={q.id} className={`p-3 rounded-xl border flex items-center justify-between text-sm ${editingQuestionId === q.id ? 'bg-indigo-950/40 border-indigo-500' : 'bg-slate-900 border-slate-700'}`}>
                     <div>
                       <p className="text-white font-medium">{idx + 1}. {q.text}</p>
                       <span className="text-xs text-slate-500">[{q.type === 'mc' ? t.mc : q.type === 'buzzer' ? t.buzzer : t.freetext}]</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCollQuestions(collQuestions.filter(item => item.id !== q.id));
-                      }}
-                      className="p-1.5 text-slate-500 hover:text-rose-400 transition"
-                    >
-                      <Trash2 className="w-4 h-4"/>
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingQuestionId(q.id);
+                          setNewCollQText(q.text || '');
+                          setNewCollQType(q.type || 'mc');
+                          setNewCollQOptions(q.options && q.options.length === 4 ? [...q.options] : ['', '', '', '']);
+                          setNewCollQCorrectOpt(q.correctOption !== undefined ? q.correctOption : 0);
+                          setNewCollQCorrectText(q.correctText || '');
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-amber-400 transition"
+                        title="Frage bearbeiten"
+                      >
+                        <Edit className="w-4 h-4"/>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (editingQuestionId === q.id) {
+                            setEditingQuestionId(null);
+                            setNewCollQText('');
+                            setNewCollQOptions(['', '', '', '']);
+                            setNewCollQCorrectText('');
+                          }
+                          setCollQuestions(collQuestions.filter(item => item.id !== q.id));
+                        }}
+                        className="p-1.5 text-slate-500 hover:text-rose-400 transition"
+                        title="Frage löschen"
+                      >
+                        <Trash2 className="w-4 h-4"/>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
