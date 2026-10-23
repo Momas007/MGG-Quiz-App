@@ -273,6 +273,9 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [playerTextAnswer, setPlayerTextAnswer] = useState('');
+  
+  // State für das Aufklappen des Sprachmenüs
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
   // Kollektion Erstellungs State (Standard: +5 und -1)
   const [collHeader, setCollHeader] = useState('');
@@ -709,33 +712,52 @@ export default function App() {
     await update(ref(db), updates);
   };
 
-  // Sprachauswahl-Komponente mit PNGs aus dem public-Ordner (/at.png, /gb.png, /sr.png)
-  const renderLanguageSelector = () => (
-    <div className="absolute top-4 right-4 z-50 flex items-center gap-1.5 bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-xl shadow-lg">
-      <Globe className="w-4 h-4 text-indigo-400 mr-1" />
-      <button 
-        onClick={() => setLang('de')} 
-        className={`px-2 py-1 rounded text-xs font-bold transition flex items-center gap-1.5 ${lang === 'de' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-        title="Deutsch"
-      >
-        <img src="/at.png" alt="AT" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> DE
-      </button>
-      <button 
-        onClick={() => setLang('en')} 
-        className={`px-2 py-1 rounded text-xs font-bold transition flex items-center gap-1.5 ${lang === 'en' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-        title="English"
-      >
-        <img src="/gb.png" alt="ENG" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> ENG
-      </button>
-      <button 
-        onClick={() => setLang('sr')} 
-        className={`px-2 py-1 rounded text-xs font-bold transition flex items-center gap-1.5 ${lang === 'sr' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-        title="Srpski"
-      >
-        <img src="/sr.png" alt="SRB" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> SRB
-      </button>
-    </div>
-  );
+  // Eingeklappte Sprachauswahl mit Welt-Icon und Flaggen
+  const renderLanguageSelector = () => {
+    const flagSrc = lang === 'de' ? '/at.png' : lang === 'en' ? '/gb.png' : '/sr.png';
+    const langLabel = lang === 'de' ? 'DE' : lang === 'en' ? 'ENG' : 'SRB';
+
+    return (
+      <div className="absolute top-4 right-4 z-50">
+        <div className="relative">
+          {/* Button zum Aufklappen mit Welt-Icon und aktiver Flagge */}
+          <button
+            onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+            className="flex items-center gap-2 bg-slate-800/90 border border-slate-700 px-3 py-2 rounded-xl shadow-lg hover:bg-slate-700 transition text-white"
+            title="Sprache auswählen"
+          >
+            <Globe className="w-4 h-4 text-indigo-400" />
+            <img src={flagSrc} alt={langLabel} className="w-5 h-3.5 object-cover rounded-sm shadow-sm" />
+            <span className="text-xs font-bold">{langLabel}</span>
+          </button>
+
+          {/* Aufgeklapptes Dropdown-Menü */}
+          {isLangMenuOpen && (
+            <div className="absolute right-0 mt-2 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1.5 flex flex-col gap-1 z-50">
+              <button 
+                onClick={() => { setLang('de'); setIsLangMenuOpen(false); }} 
+                className={`px-3 py-2 text-xs font-bold transition flex items-center gap-2 text-left hover:bg-slate-700 ${lang === 'de' ? 'text-indigo-400 bg-slate-900/50' : 'text-slate-300'}`}
+              >
+                <img src="/at.png" alt="AT" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> Deutsch (DE)
+              </button>
+              <button 
+                onClick={() => { setLang('en'); setIsLangMenuOpen(false); }} 
+                className={`px-3 py-2 text-xs font-bold transition flex items-center gap-2 text-left hover:bg-slate-700 ${lang === 'en' ? 'text-indigo-400 bg-slate-900/50' : 'text-slate-300'}`}
+              >
+                <img src="/gb.png" alt="ENG" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> English (ENG)
+              </button>
+              <button 
+                onClick={() => { setLang('sr'); setIsLangMenuOpen(false); }} 
+                className={`px-3 py-2 text-xs font-bold transition flex items-center gap-2 text-left hover:bg-slate-700 ${lang === 'sr' ? 'text-indigo-400 bg-slate-900/50' : 'text-slate-300'}`}
+              >
+                <img src="/sr.png" alt="SRB" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" /> Srpski (SRB)
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // --- HOME / LOGIN SCREEN ---
   if (!role) {
@@ -1626,7 +1648,7 @@ export default function App() {
         )}
       </div>
 
-      {/* Leaderboard mit Status-Kvačicom za predate odgovore */}
+      {/* Leaderboard mit Status-Kvačicom für predate odgovore */}
       <div className="grid grid-cols-4 gap-4">
         {playerList.map(p => {
           const hasSubmitted = p.answer !== null && p.answer !== undefined;
