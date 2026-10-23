@@ -628,28 +628,35 @@ export default function App() {
     }
   };
 
-  // Raumerstellung mit integrierter Fehler-Protokollierung
+  // Raumerstellung mit robuster Fehler-Protokollierung für Kollektionen
   const executeCreateRoom = async (colKey) => {
-    const newCode = generateCode();
-    
-    let loadedQuestions = [];
-    let cCorrectPts = 5;
-    let cWrongPts = 1;
-
-    if (colKey && publicCollections[colKey]) {
-      const colData = publicCollections[colKey];
-      loadedQuestions = colData.questions || [];
-      if (colData.correctPoints !== undefined) cCorrectPts = Number(colData.correctPoints);
-      if (colData.wrongPoints !== undefined) cWrongPoints = Number(colData.wrongPoints);
-    }
-
-    const finalizedQuestions = loadedQuestions.map(q => ({
-      ...q,
-      points: q.points !== undefined ? q.points : cCorrectPts,
-      wrongPoints: q.wrongPoints !== undefined ? q.wrongPoints : cWrongPts
-    }));
-    
     try {
+      const newCode = generateCode();
+      
+      let loadedQuestions = [];
+      let cCorrectPts = 5;
+      let cWrongPts = 1;
+
+      if (colKey && publicCollections[colKey]) {
+        const colData = publicCollections[colKey];
+        // Falls Fragen als Objekt oder Array vorliegen, sicher umwandeln
+        if (colData.questions) {
+          if (Array.isArray(colData.questions)) {
+            loadedQuestions = colData.questions;
+          } else {
+            loadedQuestions = Object.values(colData.questions);
+          }
+        }
+        if (colData.correctPoints !== undefined) cCorrectPts = Number(colData.correctPoints);
+        if (colData.wrongPoints !== undefined) cWrongPoints = Number(colData.wrongPoints);
+      }
+
+      const finalizedQuestions = loadedQuestions.map(q => ({
+        ...q,
+        points: q.points !== undefined ? q.points : cCorrectPts,
+        wrongPoints: q.wrongPoints !== undefined ? q.wrongPoints : cWrongPts
+      }));
+      
       await set(ref(db, `rooms/${newCode}`), {
         host: playerName.trim(),
         createdAt: Date.now(),
@@ -670,8 +677,8 @@ export default function App() {
       setHostPreviewIndex(0);
       setErrorMessage('');
     } catch (err) {
-      console.error("Firebase Fehler beim Erstellen des Raums:", err);
-      alert("Fehler beim Erstellen des Raums: " + err.message);
+      console.error("Firebase Fehler beim Erstellen des Raums mit Kollektion:", err);
+      alert("Fehler beim Erstellen mit Kollektion: " + err.message);
       setErrorMessage(t.errCreate + ": " + err.message);
     }
   };
@@ -1074,7 +1081,6 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              {/* Als Formular gefasst, damit der Erstellen-Button garantiert auslöst */}
               <form onSubmit={handleTriggerCreateRoom} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 space-y-3">
                 <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
                   <Shield className="w-4 h-4 text-indigo-400" /> {t.hostRoom}
@@ -1095,9 +1101,10 @@ export default function App() {
                       })
                       .map(([cKey, cData]) => {
                         const isPriv = cData.visibility === 'private';
+                        const qCount = cData.questions ? (Array.isArray(cData.questions) ? cData.questions.length : Object.keys(cData.questions).length) : 0;
                         return (
                           <option key={cKey} value={cKey}>
-                            {isPriv ? '🔒 ' : '🌐 '}{cData.header} ({cData.questions?.length || 0} Q | +{cData.correctPoints !== undefined ? cData.correctPoints : 5} / -{cData.wrongPoints !== undefined ? cData.wrongPoints : 1})
+                            {isPriv ? '🔒 ' : '🌐 '}{cData.header} ({qCount} Q | +{cData.correctPoints !== undefined ? cData.correctPoints : 5} / -{cData.wrongPoints !== undefined ? cData.wrongPoints : 1})
                           </option>
                         );
                       })}
@@ -1524,7 +1531,7 @@ export default function App() {
                     </span>
                     <p className="text-xl font-semibold text-white">{previewQ.text}</p>
 
-                    {previewQ.type === 'mc' && (
+                    {previewQ.type === 'mc' && previewQ.options && (
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                         {previewQ.options.map((o, idx) => (
                           <div key={idx} className={`p-2 rounded border ${idx === previewQ.correctOption ? 'border-emerald-500 bg-emerald-950/30 text-emerald-300' : 'border-slate-800 bg-slate-950 text-slate-400'}`}>
@@ -1794,7 +1801,7 @@ export default function App() {
               <span className="text-xs text-indigo-400 font-semibold uppercase">{t.currentQuestion}</span>
               <p className="text-xl font-bold">{liveQ.text}</p>
 
-              {liveQ.type === 'mc' && (
+              {liveQ.type === 'mc' && liveQ.options && (
                 <div className="grid grid-cols-1 gap-2 pt-2">
                   {liveQ.options.map((opt, idx) => (
                     <button
@@ -1912,7 +1919,7 @@ export default function App() {
             </span>
             <h2 className="text-4xl font-extrabold">{liveQ.text}</h2>
 
-            {liveQ.type === 'mc' && (
+            {liveQ.type === 'mc' && liveQ.options && (
               <div className="grid grid-cols-2 gap-4 pt-4">
                 {liveQ.options.map((opt, idx) => {
                   const isCorrect = roomData?.revealedAnswer && idx === liveQ.correctOption;
