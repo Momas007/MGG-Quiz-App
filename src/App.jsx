@@ -628,14 +628,14 @@ export default function App() {
     }
   };
 
-  // Raumerstellung mit behobener Variablen-Zuordnung
+  // Raumerstellung mit bombensicherer Variablen-Definition
   const executeCreateRoom = async (colKey) => {
     try {
       const newCode = generateCode();
       
       let loadedQuestions = [];
-      let cCorrectPts = 5;
-      let cWrongPts = 1;
+      let fallbackCorrectPts = 5;
+      let fallbackWrongPts = 1;
 
       if (colKey && publicCollections[colKey]) {
         const colData = publicCollections[colKey];
@@ -646,14 +646,14 @@ export default function App() {
             loadedQuestions = Object.values(colData.questions);
           }
         }
-        if (colData.correctPoints !== undefined) cCorrectPts = Number(colData.correctPoints);
-        if (colData.wrongPoints !== undefined) cWrongPoints = Number(colData.wrongPoints);
+        if (colData.correctPoints !== undefined) fallbackCorrectPts = Number(colData.correctPoints);
+        if (colData.wrongPoints !== undefined) fallbackWrongPts = Number(colData.wrongPoints);
       }
 
       const finalizedQuestions = loadedQuestions.map(q => ({
         ...q,
-        points: q.points !== undefined ? q.points : cCorrectPts,
-        wrongPoints: q.wrongPoints !== undefined ? q.wrongPoints : cWrongPts
+        points: q.points !== undefined ? q.points : fallbackCorrectPts,
+        wrongPoints: q.wrongPoints !== undefined ? q.wrongPoints : fallbackWrongPts
       }));
       
       await set(ref(db, `rooms/${newCode}`), {
@@ -661,8 +661,8 @@ export default function App() {
         createdAt: Date.now(),
         currentQuestionIndex: -1,
         questions: finalizedQuestions,
-        correctPoints: cCorrectPts,
-        wrongPoints: cWrongPts,
+        correctPoints: fallbackCorrectPts,
+        wrongPoints: fallbackWrongPts,
         players: {},
         buzzedPlayer: null,
         buzzerLocked: false,
