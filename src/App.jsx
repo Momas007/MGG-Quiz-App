@@ -628,7 +628,7 @@ export default function App() {
     }
   };
 
-  // Raumerstellung mit robuster Fehler-Protokollierung für Kollektionen
+  // Raumerstellung mit behobener Variablen-Zuordnung
   const executeCreateRoom = async (colKey) => {
     try {
       const newCode = generateCode();
@@ -639,7 +639,6 @@ export default function App() {
 
       if (colKey && publicCollections[colKey]) {
         const colData = publicCollections[colKey];
-        // Falls Fragen als Objekt oder Array vorliegen, sicher umwandeln
         if (colData.questions) {
           if (Array.isArray(colData.questions)) {
             loadedQuestions = colData.questions;
