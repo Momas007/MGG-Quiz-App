@@ -789,7 +789,6 @@ export default function App() {
                     <option value="">{t.emptyRoom}</option>
                     {Object.entries(publicCollections)
                       .filter(([_, cData]) => {
-                        // Standardmäßig auf aktuellen Editor-Sprachfilter matchen (Fallback auf 'de' falls Sprache nicht gesetzt)
                         const collLang = cData.language || 'de';
                         return collLang === lang;
                       })
@@ -888,11 +887,11 @@ export default function App() {
       }
 
       try {
-        const safeKey = cleanHeader.replace(/[.#\$[\]]/g, '_');
+        const safeKey = cleanHeader.replace(/[.#$[\]]/g, '_');
 
         await set(ref(db, `collections/${safeKey}`), {
           header: cleanHeader,
-          language: lang, // Speichert die aktuelle Sprache (de, en, sr), damit sie nur bei passender Sprache erscheint
+          language: lang,
           correctPoints: Number(collCorrectPoints) || 5,
           wrongPoints: Number(collWrongPoints) || 1,
           createdAt: Date.now(),
@@ -1579,7 +1578,6 @@ export default function App() {
             {liveQ.type === 'mc' && (
               <div className="grid grid-cols-2 gap-4 pt-4">
                 {liveQ.options.map((opt, idx) => {
-                  const playersWhoChoseThis = playerList.filter(p => p.answer === idx);
                   const isCorrect = roomData?.revealedAnswer && idx === liveQ.correctOption;
 
                   return (
@@ -1594,16 +1592,6 @@ export default function App() {
                       <p className="text-lg font-semibold">
                         <span className="text-indigo-400 mr-3 font-bold">{['A','B','C','D'][idx]}:</span> {opt}
                       </p>
-
-                      {roomData?.revealedAnswer && playersWhoChoseThis.length > 0 && (
-                        <div className="mt-3 pt-2 border-t border-slate-800/80 flex flex-wrap gap-1">
-                          {playersWhoChoseThis.map(p => (
-                            <span key={p.name} className="px-2 py-0.5 bg-slate-800 text-slate-300 text-xs rounded-md border border-slate-700 font-medium">
-                              👤 {p.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -1638,14 +1626,30 @@ export default function App() {
         )}
       </div>
 
-      {/* Leaderboard */}
+      {/* Leaderboard mit Status-Kvačicom za predate odgovore */}
       <div className="grid grid-cols-4 gap-4">
-        {playerList.map(p => (
-          <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center relative overflow-hidden">
-            <p className="text-xs text-slate-400 truncate">{p.name}</p>
-            <p className="text-xl font-black text-indigo-400">{p.score} Pkt.</p>
-          </div>
-        ))}
+        {playerList.map(p => {
+          const hasSubmitted = p.answer !== null && p.answer !== undefined;
+          return (
+            <div key={p.name} className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center relative overflow-hidden flex items-center justify-between px-5">
+              <div className="text-left truncate">
+                <p className="text-xs text-slate-400 truncate">{p.name}</p>
+                <p className="text-xl font-black text-indigo-400">{p.score} Pkt.</p>
+              </div>
+              <div className="shrink-0">
+                {hasSubmitted ? (
+                  <span className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-400 font-bold shadow-sm" title="Odgovor predat">
+                    ✓
+                  </span>
+                ) : (
+                  <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-600 text-xs">
+                    ...
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
