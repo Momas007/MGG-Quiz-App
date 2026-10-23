@@ -21,7 +21,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Übersetzungen inkl. Schwäbisch (sw) und Sächsisch (sx) sowie Passwort / Öffentlich / Privat Feldern
+// Übersetzungen inkl. Schwäbisch (sw) und Sächsisch (sx)
 const translations = {
   de: {
     appName: "Quiz Show Live",
@@ -472,16 +472,14 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [playerTextAnswer, setPlayerTextAnswer] = useState('');
   
-  // Passwort-Abfrage Modal State für private Kollektionen beim Erstellen eines Raums
+  // Passwort-Abfrage Modal State
   const [pendingCollectionKey, setPendingCollectionKey] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [roomPasswordInput, setRoomPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  // State für das Aufklappen des Sprachmenüs
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
-  // Globaler Klick-Listener zum Schließen des Sprachmenüs
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (isLangMenuOpen && !event.target.closest('#lang-menu-container')) {
@@ -494,30 +492,24 @@ export default function App() {
     };
   }, [isLangMenuOpen]);
 
-  // Kollektion Erstellungs State
   const [collHeader, setCollHeader] = useState('');
   const [collCorrectPoints, setCollCorrectPoints] = useState(5);
   const [collWrongPoints, setCollWrongPoints] = useState(1);
-  const [collVisibility, setCollVisibility] = useState('public'); // 'public' | 'private'
+  const [collVisibility, setCollVisibility] = useState('public');
   const [collPassword, setCollPassword] = useState('');
   const [collQuestions, setCollQuestions] = useState([]);
   const [publicCollections, setPublicCollections] = useState({});
   const [selectedCollectionKey, setSelectedCollectionKey] = useState('');
 
-  // Eingabefelder für eine neue Frage im Kollektions-Modus
   const [newCollQText, setNewCollQText] = useState('');
   const [newCollQType, setNewCollQType] = useState('mc');
   const [newCollQOptions, setNewCollQOptions] = useState(['', '', '', '']);
   const [newCollQCorrectOpt, setNewCollQCorrectOpt] = useState(0);
   const [newCollQCorrectText, setNewCollQCorrectText] = useState('');
 
-  // Lokaler Moderator Preview Index
   const [hostPreviewIndex, setHostPreviewIndex] = useState(0);
-
-  // Live Room State aus Firebase Realtime Database
   const [roomData, setRoomData] = useState(null);
 
-  // Öffentliche Kollektionen beim Start laden
   useEffect(() => {
     const collRef = ref(db, 'collections');
     const unsub = onValue(collRef, (snapshot) => {
@@ -526,7 +518,6 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Reset beim Zurückkehren zur Startseite
   useEffect(() => {
     if (!role) {
       setRoomCode('');
@@ -608,7 +599,7 @@ export default function App() {
     return code;
   };
 
-  // Raum Erstellen Auslöser (Prüft ob Kollektion ein Passwort hat)
+  // Raum Erstellen Auslöser
   const handleTriggerCreateRoom = (e) => {
     if (e) e.preventDefault();
     if (!playerName.trim()) return;
@@ -627,7 +618,7 @@ export default function App() {
     executeCreateRoom(selectedCollectionKey);
   };
 
-  // Passwort bestätigen und Raum erstellen
+  // Passwort bestätigen und direkt Raum erstellen
   const handleVerifyPasswordAndCreate = (e) => {
     e.preventDefault();
     const colData = publicCollections[pendingCollectionKey];
@@ -766,7 +757,6 @@ export default function App() {
     setPlayerTextAnswer('');
   };
 
-  // --- MODERATOR ACTIONS ---
   const [newQuestionText, setNewQuestionText] = useState('');
   const [newQuestionType, setNewQuestionType] = useState('mc'); 
   const [newOptions, setNewOptions] = useState(['', '', '', '']);
@@ -955,7 +945,6 @@ export default function App() {
     await update(ref(db), updates);
   };
 
-  // Sprachauswahl mit Flaggen aus dem Public-Ordner
   const renderLanguageSelector = () => {
     return (
       <div id="lang-menu-container" className="absolute top-4 right-4 z-50">
