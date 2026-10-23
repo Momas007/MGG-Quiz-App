@@ -34,6 +34,7 @@ const translations = {
     createRoomBtn: "Raum mit gewählter Kollektion erstellen",
     createCollBtn: "Neue Fragen-Kollektion erstellen",
     editCollBtn: "Bestehende Kollektion bearbeiten",
+    loadCollectionToEdit: "Kollektion zum Bearbeiten laden",
     joinRoom: "Einem Raum beitreten / Hot-Join",
     roomCodePlaceholder: "5-stelliger Code",
     joinBtn: "Raum betreten",
@@ -123,6 +124,7 @@ const translations = {
     createRoomBtn: "Create room with selected collection",
     createCollBtn: "Create new question collection",
     editCollBtn: "Edit existing collection",
+    loadCollectionToEdit: "Load collection to edit",
     joinRoom: "Join Room / Hot-Join",
     roomCodePlaceholder: "5-digit code",
     joinBtn: "Join Room",
@@ -212,6 +214,7 @@ const translations = {
     createRoomBtn: "Kreiraj sobu sa izabranom kolekcijom",
     createCollBtn: "Kreiraj novu kolekciju pitanja",
     editCollBtn: "Izmeni postojeću kolekciju",
+    loadCollectionToEdit: "Učitaj kolekciju za izmenu",
     joinRoom: "Pridruži se sobi / Hot-Join",
     roomCodePlaceholder: "5-cifreni kod",
     joinBtn: "Uđi u sobu",
@@ -301,6 +304,7 @@ const translations = {
     createRoomBtn: "Zimmer mit ausgewählter Sammlong uffmacha",
     createCollBtn: "Neie Fraga-Sammlong macha",
     editCollBtn: "Alte Sammlong bearbeita",
+    loadCollectionToEdit: "Sammlong zom Bearbeita lada",
     joinRoom: "In a Zimmer naika / Hot-Join",
     roomCodePlaceholder: "5-stelliger Code",
     joinBtn: "Zimmer betreda",
@@ -390,6 +394,7 @@ const translations = {
     createRoomBtn: "Bude mit Sammälsche uffmachn",
     createCollBtn: "Neues Gwis-Sammälsche bastln",
     editCollBtn: "Altes Sammälsche beackan",
+    loadCollectionToEdit: "Sammälsche zum Flicken lüdn",
     joinRoom: "In eene Bude neiglotzn / Hot-Join",
     roomCodePlaceholder: "5-stellisener Code",
     joinBtn: "Bude betreddn",
@@ -641,7 +646,6 @@ export default function App() {
     }
   };
 
-  // Raumerstellung mit bombensicherer Variablen-Definition
   const executeCreateRoom = async (colKey) => {
     try {
       const newCode = generateCode();
@@ -1308,7 +1312,7 @@ export default function App() {
               disabled={!selectedEditKey}
               className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition text-sm"
             >
-              Kollektion laden & bearbeiten
+              {t.loadCollectionToEdit}
             </button>
           </form>
         </div>
@@ -1515,7 +1519,6 @@ export default function App() {
                   onClick={() => {
                     if (!newCollQText.trim()) return;
                     if (editingQuestionId !== null) {
-                      // Aktualisieren der existierenden Frage
                       setCollQuestions(collQuestions.map(q => {
                         if (q.id === editingQuestionId) {
                           return {
@@ -1531,7 +1534,6 @@ export default function App() {
                       }));
                       setEditingQuestionId(null);
                     } else {
-                      // Neue Frage hinzufügen
                       const newQ = {
                         id: Date.now() + Math.random(),
                         text: newCollQText,
